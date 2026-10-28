@@ -1,3 +1,5 @@
+> **SUPERSEDED on 2026-10-28 by plan 08.** The SVG mannequin is removed; the look is shown as an outfit board of real product photos.
+
 # Plan 02: a basic flat 2D mannequin (SVG), replacing the grey statue
 
 Depends on plan 01 (`Product.kind`, correct `slot`/`gender`, `anchor_slot` in the look API).

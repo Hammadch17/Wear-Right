@@ -109,6 +109,70 @@ Report: Step 0 findings, files changed per commit, real make test and build outp
 
 ---
 
+## Prompt 06 and 07 (old, image generation): superseded by Prompt 09. Do not run.
+
+---
+
+## Prompt 09: AR try-on
+
+```
+You are working on Wear Right (FYP). Read CLAUDE.md, docs/STATUS.md and /home/user/Projects/Wear-Right/docs/plans/07-ar-try-on.md. Do only plan 07. No image generation and no cloud GPU: everything runs in the browser with MediaPipe Pose Landmarker on the team laptop (Quadro T1000 4 GB, i7-9850H).
+
+Order, one commit each, tests in the same commit:
+1. Backend data: Product.tryon_anchors (JSON) + tryon_ready (bool) + migration; catalog/engine/tryon_anchors.py (pure, numpy) with the heuristics in the plan; called from prepare_mannequin_asset; `manage.py compute_tryon_anchors`; serializer exposes the fields, PUT validates anchors (staff only). pytest on synthetic masks.
+2. Pose assets: `make models` also downloads the MediaPipe tasks-vision wasm files and pose_landmarker_lite.task into apps/web/public/mediapipe/ (gitignored); add @mediapipe/tasks-vision to apps/web. src/features/tryon/pose.ts loads them locally (no CDN).
+3. src/features/tryon/place.ts and smooth.ts (pure) with the vitest tests from the plan: 3-point affine for tops and bottoms, shoes per foot mirrored, watch on the left wrist along the forearm, cap on the head, draw order.
+4. Model photos: 6 free-licence full-body stock photos in public/tryon/bodies with SOURCES.md, and a one-off script that writes bodies.json with their landmarks.
+5. /try-on page with Model (default), Photo and Camera tabs, TryOnCanvas, camera permission and error states, "not available for try-on" chips, add-whole-look-to-cart, dev FPS overlay.
+6. Wire it in: "Try it on" buttons in OutfitPreviewModal and CompleteOutfitView; the model view replaces the SVG mannequin as the default panel there (SVG stays as fallback for items without cut-outs); swaps update instantly.
+7. Admin AR anchors editor on the product form (drag the dots on the cut-out, save).
+8. Run `make mannequin-assets` and `compute_tryon_anchors` for the demo products; list how many are tryon_ready.
+9. Docs: STATUS.md, SETUP.md (models, camera permission on localhost), DEMO.md (try-on steps), docs/phases/phase-6.md with the decision (AR over diffusion, why), limits and screenshots.
+
+Testing: `make test` and `npm --prefix apps/web run build`. Do NOT run Playwright or make e2e. By hand: the manual checks at the end of the plan, with the FPS you see in camera mode. Save screenshots of model, photo and camera modes to docs/phases/phase-6-screens/.
+
+Report: files per commit, real test/build output, how many demo products are tryon_ready, FPS on the laptop, screenshots, which garment types look good and which need anchor fixes in the admin editor.
+```
+
+---
+
+## Prompt 09 (AR try-on): superseded by Prompt 10. Do not run.
+
+## Prompt 10: outfit board + local media storage
+
+```
+You are working on Wear Right (FYP). First copy /home/user/Projects/Wear-Right/docs/plans/ over docs/plans/ in this worktree and commit it ("docs: sync plans"). Then read CLAUDE.md, docs/STATUS.md and docs/plans/08-outfit-board-and-media.md. Do only plan 08.
+
+The team decided to drop the mannequin entirely. Do not try to fix the AR or SVG mannequin.
+
+Order, one commit each, tests in the same commit:
+1. Part A: migrate catalog back before the plan 07 migration if it is applied, then git revert the plan 07 (AR try-on) commits; remove the SVG mannequin UI and its tests/spec as listed. Keep Product.kind and display_hex. Show `git log --oneline -15` in the report.
+2. Part C items 1 to 3: MEDIA_ROOT from env, shared folder, SERVE_MEDIA, check_media command. Run check_media and paste before/after.
+3. Part C items 4 and 5: ProductImage component used everywhere listed; find and fix why /shop images fail (list the failing URLs and the cause in the report).
+4. Part B: OutfitBoard component and wiring in OutfitPreviewModal and CompleteOutfitView, with the vitest tests.
+5. Part C items 6 and 7, then docs: STATUS.md (decision: mannequin dropped, outfit board; storage), SETUP.md (MEDIA_ROOT, SERVE_MEDIA, media backup), DEMO.md, CLAUDE.md phase map (Phase 6 = outfit board).
+
+Testing: `make test` and `npm --prefix apps/web run build`. Do NOT run Playwright or make e2e. Check by hand everything in "Manual checks" of plan 08, including `npm run demo`. Save 3 screenshots (shop grid, complete outfit board, preview modal) to docs/phases/phase-6-screens/.
+
+Report: commits, real test/build output, check_media counts, the /shop image cause, screenshots.
+```
+
+---
+
+## Prompt 08: skin tone, basic
+
+```
+You are working on Wear Right (FYP). Read CLAUDE.md, docs/STATUS.md and /home/user/Projects/Wear-Right/docs/plans/06-skin-tone-basic.md. Do only plan 06. Do not change the skin tone algorithm in scanner/engine beyond the quality gate.
+
+Tasks 1 to 3, one commit each, with tests (quality gate thresholds unit-tested on synthetic images; the "Not right? Choose mine" flow saves the confirmed value). Task 4: only if data/eval/labels.csv and photos exist; otherwise write in STATUS.md that the evaluation is waiting for the team's labelled selfies, and stop.
+
+Testing: `make test` and the web build. No Playwright. Check /scan by hand in good light, in a dark room and with a blurry photo.
+
+Report: files, real test/build output, what the scan says in each hand check.
+```
+
+---
+
 ## Final run (lead, once)
 
 After prompt 03: `make check` (test + build + e2e) on the whole app. Failing specs go back to the agent of the plan that touched that area.
