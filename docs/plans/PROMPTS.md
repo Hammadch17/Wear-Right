@@ -159,6 +159,22 @@ Report: commits, real test/build output, check_media counts, the /shop image cau
 
 ---
 
+## Prompt 11: test the cloud try-on from the Gemini package
+
+```
+You are working on Wear Right (FYP). Read /home/user/Projects/Wear-Right/docs/plans/09-cloud-tryon-test.md. Do only "The test" section. Do not change apps/server or apps/web and do not copy the package into the app.
+
+The package is in /home/user/Projects/Wear-Right/apps/web/wear_right_tryon_upgrade/. Its cached images and HERO_LOOKS are not real outputs; ignore them. The only thing under test is calling FASHN VTON v1.5 (and CatVTON as fallback) on Hugging Face Spaces with gradio_client, on our real product photos.
+
+Steps 1 to 6 exactly as the plan says. Ask me for an HF_TOKEN if none is set (a free Hugging Face account token, read access). Stop as soon as the daily quota message appears and report how many renders you got.
+
+Testing: none beyond the renders themselves. Commit only apps/tryon_test/REPORT.md and the output images, plus a .gitignore for the venv.
+
+Report: view_api output, corrected call code, the results table, the images side by side, and your honest verdict.
+```
+
+---
+
 ## Prompt 08: skin tone, basic
 
 ```
