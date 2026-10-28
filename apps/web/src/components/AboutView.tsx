@@ -225,54 +225,99 @@ export default function AboutView() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Member 1: Hammad Ahmad */}
-            <div className="flex flex-col items-center text-center p-8 bg-white rounded-2xl border border-blue-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.02]">
-              <div className="w-20 h-20 rounded-full bg-blue-600 text-white border-4 border-blue-50 flex items-center justify-center font-display font-bold text-2xl mb-6 shadow-md shadow-blue-900/10">
-                HA
+            <div className="flex flex-col items-center text-center overflow-hidden bg-white rounded-2xl border border-blue-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.02] group">
+              <div className="w-full aspect-[4/5] bg-slate-100 overflow-hidden relative">
+                <img
+                  src="/brand/hammad.png"
+                  alt="Hammad Ahmad"
+                  className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                  loading="eager"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    const parent = e.currentTarget.parentElement;
+                    if (parent) {
+                      parent.className = "w-full aspect-[4/5] bg-blue-600 text-white flex items-center justify-center font-display font-bold text-5xl";
+                      parent.innerText = "HA";
+                    }
+                  }}
+                />
               </div>
-              <h3 className="font-serif font-normal text-brand-dark text-lg mb-1">
-                Hammad Ahmad
-              </h3>
-              <p className="text-xs text-brand-gold font-sans font-bold uppercase tracking-wider">
-                Founder & Developer
-              </p>
-              <p className="text-xs text-slate-500 font-sans mt-3.5 leading-relaxed">
-                Leads software development, AI model integrations, and backend
-                architecture of Style Calibration.
-              </p>
+              <div className="p-6 flex flex-col items-center text-center w-full">
+                <h3 className="font-serif font-normal text-brand-dark text-lg mb-1">
+                  Hammad Ahmad
+                </h3>
+                <p className="text-xs text-brand-gold font-sans font-bold uppercase tracking-wider">
+                  Founder & Developer
+                </p>
+                <p className="text-xs text-slate-500 font-sans mt-3.5 leading-relaxed">
+                  Leads software development, AI model integrations, and backend
+                  architecture of Style Calibration.
+                </p>
+              </div>
             </div>
 
             {/* Member 2: Ali Tariq */}
-            <div className="flex flex-col items-center text-center p-8 bg-white rounded-2xl border border-blue-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.02]">
-              <div className="w-20 h-20 rounded-full bg-blue-700 text-white border-4 border-blue-50 flex items-center justify-center font-display font-bold text-2xl mb-6 shadow-md shadow-blue-900/10">
-                AT
+            <div className="flex flex-col items-center text-center overflow-hidden bg-white rounded-2xl border border-blue-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.02] group">
+              <div className="w-full aspect-[4/5] bg-slate-100 overflow-hidden relative">
+                <img
+                  src="/brand/ali.png"
+                  alt="Ali Tariq"
+                  className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                  loading="eager"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    const parent = e.currentTarget.parentElement;
+                    if (parent) {
+                      parent.className = "w-full aspect-[4/5] bg-blue-700 text-white flex items-center justify-center font-display font-bold text-5xl";
+                      parent.innerText = "AT";
+                    }
+                  }}
+                />
               </div>
-              <h3 className="font-serif font-normal text-brand-dark text-lg mb-1">
-                Ali Tariq
-              </h3>
-              <p className="text-xs text-brand-gold font-sans font-bold uppercase tracking-wider">
-                UI/UX Designer
-              </p>
-              <p className="text-xs text-slate-500 font-sans mt-3.5 leading-relaxed">
-                Crafts the premium brand visual identity, designs style curation
-                interfaces, and maintains seamless web flows.
-              </p>
+              <div className="p-6 flex flex-col items-center text-center w-full">
+                <h3 className="font-serif font-normal text-brand-dark text-lg mb-1">
+                  Ali Tariq
+                </h3>
+                <p className="text-xs text-brand-gold font-sans font-bold uppercase tracking-wider">
+                  UI/UX Designer
+                </p>
+                <p className="text-xs text-slate-500 font-sans mt-3.5 leading-relaxed">
+                  Crafts the premium brand visual identity, designs style curation
+                  interfaces, and maintains seamless web flows.
+                </p>
+              </div>
             </div>
 
             {/* Member 3: Sameer Ahmad */}
-            <div className="flex flex-col items-center text-center p-8 bg-white rounded-2xl border border-blue-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.02]">
-              <div className="w-20 h-20 rounded-full bg-blue-800 text-white border-4 border-blue-50 flex items-center justify-center font-display font-bold text-2xl mb-6 shadow-md shadow-blue-900/10">
-                SA
+            <div className="flex flex-col items-center text-center overflow-hidden bg-white rounded-2xl border border-blue-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.02] group">
+              <div className="w-full aspect-[4/5] bg-slate-100 overflow-hidden relative">
+                <img
+                  src="/brand/sameer.png"
+                  alt="Sameer Ahmad"
+                  className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                  loading="eager"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    const parent = e.currentTarget.parentElement;
+                    if (parent) {
+                      parent.className = "w-full aspect-[4/5] bg-blue-800 text-white flex items-center justify-center font-display font-bold text-5xl";
+                      parent.innerText = "SA";
+                    }
+                  }}
+                />
               </div>
-              <h3 className="font-serif font-normal text-brand-dark text-lg mb-1">
-                Sameer Ahmad
-              </h3>
-              <p className="text-xs text-brand-gold font-sans font-bold uppercase tracking-wider">
-                Co-Developer & QA
-              </p>
-              <p className="text-xs text-slate-500 font-sans mt-3.5 leading-relaxed">
-                Manages catalog intelligence validation, system deployment
-                auditing, and rule engines quality assurance.
-              </p>
+              <div className="p-6 flex flex-col items-center text-center w-full">
+                <h3 className="font-serif font-normal text-brand-dark text-lg mb-1">
+                  Sameer Ahmad
+                </h3>
+                <p className="text-xs text-brand-gold font-sans font-bold uppercase tracking-wider">
+                  Co-Developer & QA
+                </p>
+                <p className="text-xs text-slate-500 font-sans mt-3.5 leading-relaxed">
+                  Manages catalog intelligence validation, system deployment
+                  auditing, and rule engines quality assurance.
+                </p>
+              </div>
             </div>
           </div>
         </div>
