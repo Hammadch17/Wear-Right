@@ -24,7 +24,7 @@ from PIL import Image
 from .engine import alpha_layers
 from .models import MannequinBase, MannequinLayer, Product
 
-MANIFEST_SLOTS = {"top", "bottom", "shoes", "watch"}
+MANIFEST_SLOTS = {"top", "kurta", "outerwear", "bottom", "shoes", "watch", "eyewear", "headwear"}
 
 
 @dataclass
@@ -69,11 +69,38 @@ def read_manifest(path: Path) -> list[dict]:
         return [{(key or "").strip(): (value or "").strip() for key, value in row.items()} for row in csv.DictReader(handle)]
 
 
-def import_alpha_kit(*, source_dir, gender, segment, rebuild=False) -> ImportResult:
-    """Create/refresh the gender's base and one layer per manifest row whose render file exists.
+def _manifest_gender(row: dict) -> str:
+    """The row's gender; an old manifest without the column is men, like the original pilot."""
+    return (row.get("gender", "") or "").strip().lower() or "men"
 
-    `segment(image) -> (upper, lower)` is the cloth segmenter (catalog.engine.cutout.cloth_segmenter in real
-    runs, a stand-in in tests). Unchanged renders are skipped unless `rebuild` or the base photo changed.
+
+def _find_product(row: dict) -> tuple[Product | None, str]:
+    """Product for a manifest row, and a note saying how a fallback name match was resolved."""
+    external_id = row.get("external_id", "")
+    if external_id:
+        return Product.objects.filter(external_id=external_id).first(), ""
+
+    name = (row.get("product_name", "") or "").strip()
+    if not name:
+        return None, ""
+    matches = list(Product.objects.filter(name__iexact=name).order_by("id")[:2])
+    if len(matches) > 1:
+        return None, f"ambiguous product_name {name!r}"
+    if not matches:
+        return None, f"no product with product_name {name!r}"
+    return matches[0], f"matched product_name {matches[0].name!r}"
+
+
+def _join_notes(*notes: str) -> str:
+    return "; ".join(note for note in notes if note)
+
+
+def import_alpha_kit(*, source_dir, gender, segment, rebuild=False) -> ImportResult:
+    """Create/refresh the gender's base and one layer per matching manifest row with a render.
+
+    `segment(image) -> (upper, lower[, full])` is the cloth segmenter (catalog.engine.cutout.cloth_segmenter
+    in real runs, a stand-in in tests). Rows for the other gender are ignored; an old manifest with no
+    `gender` column is treated as men. Unchanged renders are skipped unless `rebuild` or the base changed.
     """
     source = Path(source_dir)
     base_path = source / "base" / f"{gender}.png"
@@ -99,6 +126,7 @@ def import_alpha_kit(*, source_dir, gender, segment, rebuild=False) -> ImportRes
     rows = [
         _import_row(row, source=source, mannequin=mannequin, base=base, base_cloth=base_cloth, segment=segment, rebuild=rebuild)
         for row in read_manifest(manifest_path)
+        if _manifest_gender(row) == gender
     ]
     return ImportResult(base_created=created, base_changed=base_changed, rows=rows)
 
@@ -130,20 +158,22 @@ def _import_row(row, *, source, mannequin, base, base_cloth, segment, rebuild) -
     if not row.get("render_file") or not render_path.is_file():
         result.reason = f"render not found: {row.get('render_file') or '(empty)'}"
         return result
-    product = Product.objects.filter(external_id=external_id).first() if external_id else None
+    product, match_note = _find_product(row)
     if product is None:
-        result.reason = f"no product with external_id {external_id!r}"
+        result.reason = match_note or (
+            f"no product with external_id {external_id!r}" if external_id else "no product with a matching product_name"
+        )
         return result
     result.product_id = product.id
     if product.gender and product.gender not in (mannequin.gender, "unisex"):
-        result.reason = f"product is {product.gender}, base is {mannequin.gender}"
+        result.reason = _join_notes(match_note, f"product is {product.gender}, base is {mannequin.gender}")
         return result
 
     render_sha = _sha256(render_path)
     existing = MannequinLayer.objects.filter(base=mannequin, product=product).first()
     if existing and existing.source_sha == render_sha and existing.slot == slot and not rebuild:
         result.outcome = "unchanged" if existing.approved else "rejected"
-        result.reason = existing.note
+        result.reason = _join_notes(match_note, existing.note)
         result.report = existing.report
         return result
 
@@ -163,10 +193,12 @@ def _import_row(row, *, source, mannequin, base, base_cloth, segment, rebuild) -
     layer_row.save()
 
     result.outcome = "approved" if not reasons else "rejected"
-    result.reason = layer_row.note
+    result.reason = _join_notes(match_note, layer_row.note)
     result.report = layer_row.report
     if not reasons and (product.status == "Draft" or not product.is_active):
-        result.reason = "approved, but the product is hidden from shoppers (Draft or inactive)"
+        result.reason = _join_notes(
+            match_note, "approved, but the product is hidden from shoppers (Draft or inactive)",
+        )
     return result
 
 

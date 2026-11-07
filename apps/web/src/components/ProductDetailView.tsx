@@ -35,6 +35,7 @@ type ApiProduct = {
   id: number | string;
   name: string;
   category?: string;
+  gender?: string;
   cultural_tag?: string;
   compatible_skin_tone?: string;
   style?: string;
@@ -256,13 +257,14 @@ function ProductDetail({ id }: { id: string | undefined }) {
     };
   }, [productId]);
 
-  // Mannequin (alpha): offer the dressing room when this product has a garment layer.
+  // Mannequin (alpha): offer the dressing room on the product's own model when it has a garment layer.
   const [mannequinFor, setMannequinFor] = useState<string | null>(null);
+  const mannequinGender = product?.gender === "women" ? "women" : "men";
   useEffect(() => {
     if (!productId) return;
     let cancelled = false;
     mannequinApi
-      .wardrobe("men")
+      .wardrobe(mannequinGender)
       .then((wardrobe) => {
         if (!cancelled && hasProduct(wardrobe, Number(productId))) setMannequinFor(productId);
       })
@@ -272,7 +274,7 @@ function ProductDetail({ id }: { id: string | undefined }) {
     return () => {
       cancelled = true;
     };
-  }, [productId]);
+  }, [productId, mannequinGender]);
   const onMannequin = productId !== null && mannequinFor === productId;
 
   const outfitReady = outfitState !== null && outfitState.productId === productId;
@@ -680,7 +682,7 @@ Please share more details.`;
               {/* Mannequin (alpha) */}
               {onMannequin && (
                 <button
-                  onClick={() => navigate(`/mannequin?product=${product.id}`)}
+                  onClick={() => navigate(`/mannequin?gender=${mannequinGender}&product=${product.id}`)}
                   data-testid="try-on-mannequin"
                   className="sm:col-span-2 bg-brand-dark hover:opacity-90 text-white py-4 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200"
                 >

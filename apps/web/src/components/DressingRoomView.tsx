@@ -8,6 +8,7 @@ import { mannequinApi, type AlphaSlot, type AlphaWardrobe } from "@/features/man
 import {
   allImageUrls,
   defaultOutfit,
+  hasProduct,
   layerStack,
   outfitTotal,
   shuffleOutfit,
@@ -22,22 +23,64 @@ function formatPKR(value: number) {
   return `Rs. ${Number(value || 0).toLocaleString("en-PK")}`;
 }
 
+type Gender = "men" | "women";
+
+function GenderSwitch({ gender, onChange }: { gender: Gender; onChange: (gender: Gender) => void }) {
+  return (
+    <div
+      role="group"
+      aria-label="Mannequin gender"
+      className="inline-flex rounded-full border border-brand-border bg-white p-1 shadow-sm"
+    >
+      {(["men", "women"] as Gender[]).map((value) => (
+        <button
+          key={value}
+          type="button"
+          aria-pressed={gender === value}
+          data-testid={`mannequin-gender-${value}`}
+          onClick={() => onChange(value)}
+          className={`rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider transition-colors ${
+            gender === value ? "bg-brand-dark text-white" : "text-slate-500 hover:text-brand-dark"
+          }`}
+        >
+          {value === "men" ? "Men" : "Women"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Mannequin (alpha): one AI-generated model photo and a garment layer per product, stacked in the browser,
- * so the shopper can try any shirt with any trousers, shoes and watch and see the whole outfit at once.
- * Only the curated alpha products have layers (see docs/plans/11-mannequin-alpha-pilot.md).
+ * so the shopper can try a curated outfit on either the men's or women's model.
+ * Only the curated alpha products have layers (see docs/plans/12-mannequin-v2-slots-women.md).
  */
 export default function DressingRoomView() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const focus = Number(params.get("product")) || null;
+  const queryGender: Gender = params.get("gender") === "women" ? "women" : "men";
+  const [gender, setGender] = useState<Gender>(queryGender);
   const [state, setState] = useState<LoadState>({ status: "loading" });
 
   useEffect(() => {
     let cancelled = false;
-    mannequinApi
-      .wardrobe("men")
-      .then((wardrobe) => {
-        if (!cancelled) setState({ status: "ready", wardrobe });
+    const load = focus !== null
+      ? Promise.all([mannequinApi.wardrobe("men"), mannequinApi.wardrobe("women")]).then(([men, women]) => {
+          const order: Array<[Gender, AlphaWardrobe]> =
+            queryGender === "women" ? [["women", women], ["men", men]] : [["men", men], ["women", women]];
+          const found = order.find(([, wardrobe]) => hasProduct(wardrobe, focus));
+          return found
+            ? { gender: found[0], wardrobe: found[1] }
+            : { gender: queryGender, wardrobe: queryGender === "women" ? women : men };
+        })
+      : mannequinApi.wardrobe(queryGender).then((wardrobe) => ({ gender: queryGender, wardrobe }));
+
+    load
+      .then(({ gender: loadedGender, wardrobe }) => {
+        if (cancelled) return;
+        setGender(loadedGender);
+        setState({ status: "ready", wardrobe });
       })
       .catch((error) => {
         console.error("Mannequin wardrobe error:", error);
@@ -46,34 +89,68 @@ export default function DressingRoomView() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [focus, queryGender]);
+
+  const chooseGender = (next: Gender) => {
+    if (next === gender && focus === null) return;
+    setState({ status: "loading" });
+    navigate(`/mannequin?gender=${next}`);
+  };
 
   if (state.status === "loading") {
     return (
-      <main className="min-h-[70vh] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-brand-gold" aria-label="Loading the mannequin" />
+      <main className="min-h-[70vh] px-4 py-8">
+        <div className="mx-auto max-w-7xl">
+          <GenderSwitch gender={gender} onChange={chooseGender} />
+          <div className="flex min-h-[55vh] items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-brand-gold" aria-label="Loading the mannequin" />
+          </div>
+        </div>
       </main>
     );
   }
 
   if (state.status === "error" || !state.wardrobe.base || state.wardrobe.slots.length === 0) {
     return (
-      <main className="min-h-[70vh] flex flex-col items-center justify-center gap-3 px-4 text-center">
-        <Shirt className="w-10 h-10 text-slate-300" />
-        <h1 className="text-xl font-black text-brand-dark">Mannequin preview is coming soon</h1>
-        <p className="max-w-md text-sm font-semibold text-slate-500">
-          {state.status === "error"
-            ? "We could not load the mannequin right now. Please try again in a moment."
-            : "No products are on the mannequin yet."}
-        </p>
+      <main className="min-h-[70vh] px-4 py-8">
+        <div className="mx-auto max-w-7xl">
+          <GenderSwitch gender={gender} onChange={chooseGender} />
+          <div className="flex min-h-[55vh] flex-col items-center justify-center gap-3 text-center">
+            <Shirt className="w-10 h-10 text-slate-300" />
+            <h1 className="text-xl font-black text-brand-dark">Mannequin preview is coming soon</h1>
+            <p className="max-w-md text-sm font-semibold text-slate-500">
+              {state.status === "error"
+                ? "We could not load the mannequin right now. Please try again in a moment."
+                : "No products are on the mannequin yet."}
+            </p>
+          </div>
+        </div>
       </main>
     );
   }
 
-  return <DressingRoom key={focus ?? "none"} wardrobe={state.wardrobe} focus={focus} />;
+  return (
+    <DressingRoom
+      key={`${state.wardrobe.gender}-${focus ?? "none"}`}
+      wardrobe={state.wardrobe}
+      focus={focus}
+      gender={state.wardrobe.gender}
+      onGender={chooseGender}
+    />
+  );
 }
 
-function DressingRoom({ wardrobe, focus }: { wardrobe: AlphaWardrobe; focus: number | null }) {
+function DressingRoom({
+  wardrobe,
+  focus,
+  gender,
+  onGender,
+}: {
+  wardrobe: AlphaWardrobe;
+  focus: number | null;
+  gender: Gender;
+  onGender: (gender: Gender) => void;
+}) {
   const navigate = useNavigate();
   const [outfit, setOutfit] = useState<Outfit>(() => defaultOutfit(wardrobe, focus));
   const base = wardrobe.base!;
@@ -95,10 +172,14 @@ function DressingRoom({ wardrobe, focus }: { wardrobe: AlphaWardrobe; focus: num
   return (
     <main className="max-w-7xl mx-auto px-4 py-8 lg:py-12">
       <header className="mb-6 lg:mb-8">
+        <div className="mb-4">
+          <GenderSwitch gender={gender} onChange={onGender} />
+        </div>
         <p className="text-[10px] font-black uppercase tracking-widest text-brand-gold">Mannequin · alpha</p>
         <h1 className="mt-1 text-2xl lg:text-3xl font-black text-brand-dark">Try outfits on the mannequin</h1>
         <p className="mt-2 max-w-2xl text-sm font-semibold text-slate-500">
-          Pick a shirt, trousers, shoes and a watch and see them together. Pick an item again to take it off.
+          Pick a shirt or kurta, trousers, shoes and a watch and see them together. Add a waistcoat, sunglasses or
+          a cap when you want. Pick an item again to take it off.
         </p>
       </header>
 

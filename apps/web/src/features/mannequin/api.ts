@@ -1,6 +1,14 @@
 import { apiGet } from "@/lib/api";
 
-export type AlphaSlot = "top" | "bottom" | "shoes" | "watch";
+export type AlphaSlot =
+  | "top"
+  | "kurta"
+  | "outerwear"
+  | "bottom"
+  | "shoes"
+  | "watch"
+  | "eyewear"
+  | "headwear";
 
 export type AlphaItem = {
   product_id: number;

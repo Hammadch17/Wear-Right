@@ -5,8 +5,37 @@ export type Outfit = Record<AlphaSlot, number | null>;
 
 export type StackLayer = { key: string; src: string; z: number };
 
-const EMPTY: Outfit = { top: null, bottom: null, shoes: null, watch: null };
-const DEFAULT_Z: Record<string, number> = { shoes: 1, bottom: 2, base_bottom: 2, top: 3, base_top: 3, watch: 4 };
+const BASE_SLOTS: AlphaSlot[] = ["top", "bottom", "shoes", "watch"];
+const EXTRA_SLOTS: AlphaSlot[] = ["outerwear", "eyewear", "headwear"];
+/** A kurta replaces a shirt and the other way round; the other parts can be added freely. */
+const EXCLUSIVE: Partial<Record<AlphaSlot, AlphaSlot>> = { top: "kurta", kurta: "top" };
+
+const EMPTY: Outfit = {
+  top: null,
+  kurta: null,
+  outerwear: null,
+  bottom: null,
+  shoes: null,
+  watch: null,
+  eyewear: null,
+  headwear: null,
+};
+const DEFAULT_Z: Record<string, number> = {
+  shoes: 1,
+  bottom: 2,
+  base_bottom: 2,
+  top: 3,
+  kurta: 3,
+  base_top: 3,
+  outerwear: 4,
+  watch: 5,
+  eyewear: 6,
+  headwear: 7,
+};
+
+function itemsFor(wardrobe: AlphaWardrobe, slot: AlphaSlot): AlphaItem[] {
+  return wardrobe.slots.find((entry) => entry.slot === slot)?.items ?? [];
+}
 
 export function findItem(wardrobe: AlphaWardrobe, slot: AlphaSlot, productId: number | null): AlphaItem | null {
   if (productId === null) return null;
@@ -23,26 +52,40 @@ export function hasProduct(wardrobe: AlphaWardrobe, productId: number): boolean 
   return wardrobe.base !== null && slotOfProduct(wardrobe, productId) !== null;
 }
 
-/** First item of every slot, with `focusProductId` (from ?product=) worn in its slot when it is in the alpha. */
+/**
+ * The plain default outfit: first shirt, trousers, shoes and watch.
+ * Kurtas, waistcoats/blazers, sunglasses and caps are opt-in, so the mannequin starts simple.
+ * A `focusProductId` (from ?product=) is still worn in its slot and clears its exclusive partner.
+ */
 export function defaultOutfit(wardrobe: AlphaWardrobe, focusProductId?: number | null): Outfit {
   const outfit: Outfit = { ...EMPTY };
-  for (const row of wardrobe.slots) outfit[row.slot] = row.items[0]?.product_id ?? null;
+  for (const slot of BASE_SLOTS) outfit[slot] = itemsFor(wardrobe, slot)[0]?.product_id ?? null;
   if (focusProductId != null) {
     const slot = slotOfProduct(wardrobe, focusProductId);
-    if (slot) outfit[slot] = focusProductId;
+    if (slot) {
+      outfit[slot] = focusProductId;
+      const other = EXCLUSIVE[slot];
+      if (other) outfit[other] = null;
+    }
   }
   return outfit;
 }
 
 /** Picking the item already worn takes it off (the base clothes show again). */
 export function toggleItem(outfit: Outfit, slot: AlphaSlot, productId: number): Outfit {
-  return { ...outfit, [slot]: outfit[slot] === productId ? null : productId };
+  const next = outfit[slot] === productId ? null : productId;
+  const updated = { ...outfit, [slot]: next };
+  if (next !== null) {
+    const other = EXCLUSIVE[slot];
+    if (other) updated[other] = null;
+  }
+  return updated;
 }
 
 /**
  * The <img> layers to draw over the base photo, lowest first.
- * - A top without a chosen bottom draws the base's trousers (their waist extension fills under a short shirt).
- * - A bottom without a chosen top redraws the base tee, so the bottom's waist extension does not crop it.
+ * - A top or kurta without a chosen bottom draws the base's trousers (their waist extension fills under a short shirt).
+ * - A bottom without a chosen top or kurta redraws the base tee, so the bottom's waist extension does not crop it.
  */
 export function layerStack(wardrobe: AlphaWardrobe, outfit: Outfit): StackLayer[] {
   const base = wardrobe.base;
@@ -53,7 +96,8 @@ export function layerStack(wardrobe: AlphaWardrobe, outfit: Outfit): StackLayer[
     const item = findItem(wardrobe, slot, outfit[slot]);
     if (item) layers.push({ key: `${slot}-${item.product_id}`, src: item.layer, z: z[slot] });
   });
-  const wearsTop = findItem(wardrobe, "top", outfit.top) !== null;
+  const wearsTop =
+    findItem(wardrobe, "top", outfit.top) !== null || findItem(wardrobe, "kurta", outfit.kurta) !== null;
   const wearsBottom = findItem(wardrobe, "bottom", outfit.bottom) !== null;
   if (wearsTop && !wearsBottom && base.base_bottom) layers.push({ key: "base-bottom", src: base.base_bottom, z: z.base_bottom });
   if (wearsBottom && !wearsTop && base.base_top) layers.push({ key: "base-top", src: base.base_top, z: z.base_top });
@@ -71,12 +115,28 @@ export function outfitTotal(wardrobe: AlphaWardrobe, outfit: Outfit): number {
   return wornItems(wardrobe, outfit).reduce((sum, entry) => sum + Number(entry.item.price || 0), 0);
 }
 
-/** A random item in every slot (always something in each slot that has items). */
+/**
+ * A random outfit: one of shirt/kurta, always trousers, shoes and watch when available,
+ * and each extra (outerwear, sunglasses, cap) with a 50% chance.
+ */
 export function shuffleOutfit(wardrobe: AlphaWardrobe, random: () => number = Math.random): Outfit {
   const outfit: Outfit = { ...EMPTY };
-  for (const row of wardrobe.slots) {
-    if (!row.items.length) continue;
-    outfit[row.slot] = row.items[Math.min(row.items.length - 1, Math.floor(random() * row.items.length))].product_id;
+  const pick = (slot: AlphaSlot): number | null => {
+    const items = itemsFor(wardrobe, slot);
+    if (!items.length) return null;
+    return items[Math.min(items.length - 1, Math.floor(random() * items.length))].product_id;
+  };
+
+  const hasTop = itemsFor(wardrobe, "top").length > 0;
+  const hasKurta = itemsFor(wardrobe, "kurta").length > 0;
+  if (hasTop || hasKurta) {
+    const chooseKurta = hasKurta && (!hasTop || random() < 0.5);
+    const slot = chooseKurta ? "kurta" : "top";
+    outfit[slot] = pick(slot);
+  }
+  for (const slot of ["bottom", "shoes", "watch"] as AlphaSlot[]) outfit[slot] = pick(slot);
+  for (const slot of EXTRA_SLOTS) {
+    if (random() < 0.5) outfit[slot] = pick(slot);
   }
   return outfit;
 }
