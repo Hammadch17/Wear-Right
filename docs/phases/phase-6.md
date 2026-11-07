@@ -93,10 +93,83 @@ A second run reported all 10 rows as `unchanged`, so re-importing the same kit i
 | B: pink check shirt, blue jeans, blue shoes, Titan watch | <img src="phase-6-screens/alpha/desktop-outfit-b.png" width="460"> | <img src="phase-6-screens/alpha/phone-outfit-b.png" width="190"> |
 | C: brown check shirt, dark green trousers, blue shoes, Titan watch | <img src="phase-6-screens/alpha/desktop-outfit-c.png" width="460"> | <img src="phase-6-screens/alpha/phone-outfit-c.png" width="190"> |
 
-**Limits.**
+**Limits (v1 pilot).**
 
 - Curated pilot set only: ten men's products (three shirts, three trousers, two shoes, two watches). Products without a layer do not get the try-on button.
-- Men only: the API accepts `gender=women`, but the pilot has no women's base or layers.
+- Men only: the v1 pilot has no women's base or layers.
 - The model is AI-generated and fixed: one body, one pose, one backdrop. It is not the shopper and does not reflect their size or skin tone.
+- Not live try-on: layers are pre-generated edits of the model photo, not a real-time render of the shopper or the product. Fit, drape and fabric behaviour are illustrative.
+
+### v2: eight slots and women (2026-11-07)
+
+Plan 12 extended the pilot without changing the stacking approach. The engine now knows eight slots — `top`, `kurta`, `outerwear`, `bottom`, `shoes`, `watch`, `eyewear` and `headwear` — and the cloth segmenter returns upper, lower and full-body masks. Kurtas are cut down to the knee and deliberately cover the trouser top; outerwear is cut only around the torso so the shirt inside an open waistcoat or blazer shows through; the trouser dilation is wider so patiala, shalwar and skirts are not clipped by the base trousers; sunglasses and caps are cut in their head bands. The web dressing room has a Men | Women switch, a kurta replaces the shirt (and the other way round), the default outfit stays shirt + trousers + shoes + watch, and shuffle picks either a shirt or a kurta and adds outerwear, sunglasses and a cap with a 50% chance each. Product pages open the mannequin for the product's own gender. The importer filters rows by the manifest's `gender` column (missing means men) and falls back from `external_id` to an exact case-insensitive `product_name`; ambiguous names are skipped.
+
+**Real v2 import.** The shared kit's manifest filenames did not match the render filenames, so the renders were staged under the manifest names in a temporary source folder; missing women's renders were not fabricated. Men, 2026-11-07:
+
+```text
+code  slot    outcome        ecc   shift    keep  note
+T1    top     unchanged    0.999   0.2px   0.29%
+T2    top     unchanged    0.997   0.6px   0.75%
+T3    top     unchanged    0.999   0.5px   0.25%
+B1    bottom  unchanged    0.996   0.4px   0.10%
+B2    bottom  unchanged    0.998   0.3px   0.11%
+B3    bottom  unchanged    0.996   0.3px   0.15%
+S1    shoes   unchanged    0.998   0.3px   0.20%
+S2    shoes   unchanged    0.999   0.4px   0.26%
+W1    watch   unchanged    0.998   0.4px   0.15%
+W2    watch   unchanged    0.997   0.2px   0.16%
+MO1   outerwear approved    0.996   0.5px   1.46%
+MB4   bottom  approved     0.995   0.3px   0.18%  matched product_name 'Black Formal Trouser'
+MO2   outerwear approved    0.999   0.2px   1.27%  matched product_name 'Olive Green Tailored Blazer'
+MB5   bottom  approved     0.995   0.6px   0.20%  matched product_name 'Olive Suit Trousers'
+MO3   outerwear approved    0.994   0.8px   0.86%
+MO4   outerwear approved    0.998   0.4px   0.27%
+MK1   kurta   approved     0.994   1.0px   1.05%
+MK2   kurta   approved     0.995   0.8px   0.26%
+MK3   kurta   approved     0.994   0.3px   0.49%
+MB6   bottom  approved     0.995   0.6px   0.26%
+MS3   shoes   approved     0.992   0.2px   3.32%
+MS4   shoes   skipped                             product is women, base is men
+ME1   eyewear rejected     0.993   0.7px   9.06%  9.1% of the picture outside the item changed (pose or framing moved)
+MH1   headwear approved    0.996   0.7px   0.16%
+Approved 12, unchanged 10, rejected 1, skipped 1.
+```
+
+Women, 2026-11-07:
+
+```text
+WT1   top     approved     0.998   0.4px   0.05%
+WT2   top     skipped                             render not found
+WK1   kurta   skipped                             render not found
+WK2   kurta   skipped                             render not found
+WK3   kurta   skipped                             render not found
+WK4   kurta   skipped                             render not found
+WK5   kurta   skipped                             render not found
+WB1   bottom  skipped                             render not found
+WB2   bottom  skipped                             render not found
+WB3   bottom  skipped                             render not found
+WB4   bottom  skipped                             render not found
+WS1   shoes   skipped                             render not found
+WS2   shoes   skipped                             render not found
+WW1   watch   skipped                             render not found
+WW2   watch   skipped                             render not found
+WE1   eyewear skipped                             render not found
+Approved 1, unchanged 0, rejected 0, skipped 15.
+```
+
+**Screenshots (v2).** Desktop 1440 px and phone 390 px, full page, in `phase-6-screens/alpha/v2/`:
+
+| Outfit | Desktop | Phone |
+| --- | --- | --- |
+| A: red tee, black trousers, formal shoes, CASIO watch | <img src="phase-6-screens/alpha/v2/mannequin-desktop-outfit-a.png" width="460"> | <img src="phase-6-screens/alpha/v2/mannequin-phone-outfit-a.png" width="190"> |
+| B: red check shirt, olive blazer, olive suit trousers, formal shoes, Titan watch | <img src="phase-6-screens/alpha/v2/mannequin-desktop-outfit-b.png" width="460"> | <img src="phase-6-screens/alpha/v2/mannequin-phone-outfit-b.png" width="190"> |
+| C: blue printed kurta, white churidar, blue waistcoat, formal shoes, Titan watch | <img src="phase-6-screens/alpha/v2/mannequin-desktop-outfit-c.png" width="460"> | <img src="phase-6-screens/alpha/v2/mannequin-phone-outfit-c.png" width="190"> |
+| Women: the only approved women's layer (light blue top) | <img src="phase-6-screens/alpha/v2/mannequin-desktop-women.png" width="460"> | <img src="phase-6-screens/alpha/v2/mannequin-phone-women.png" width="190"> |
+
+**Limits (v2).**
+
+- Still a curated set: the v2 import has 13 approved men's layers across seven slots and one approved women's layer. The women's base exists, but 15 women's renders are missing, so women's kurta/dupatta, patiala, skirt and heels cannot be shown yet. One men's eyewear render was rejected because 9.1% of the picture outside the item changed; no sunglasses row is shown. The men's chappal row was skipped because that product is tagged women in the catalogue.
+- Known cut-out artefacts: sleeved blazers/waistcoats lose their sleeves because the outerwear mask only keeps changed pixels near the base torso, so sleeves over bare arms become transparent. The white churidar shows dark gaps where the wide layer is transparent over the base trousers, and a kurta can show a thin vertical light streak below its hem. These are real limitations of the current masks, not display bugs; thresholds were not loosened to hide them.
+- The model is AI-generated and fixed: one body, one pose, one backdrop per gender. It is not the shopper and does not reflect their size or skin tone.
 - Not live try-on: layers are pre-generated edits of the model photo, not a real-time render of the shopper or the product. Fit, drape and fabric behaviour are illustrative.
 
