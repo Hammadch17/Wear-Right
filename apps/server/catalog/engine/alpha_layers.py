@@ -9,9 +9,11 @@ Nano Banana Pro, by hand; see extras/mannequin-alpha-kit/GUIDE.md). This module:
 3. cuts the swapped item out as a transparent layer on that same canvas,
 4. stacks layers in a fixed order, so any shirt + trousers + shoes + watch combination shows on the body.
 
-Tops and bottoms are cut with the cloth segmentation masks (upper/lower body clothes) passed in by the
-caller, so a shirt layer never carries a strip of trousers and the other way round. Shoes and watches are
-cut from the colour difference against the base inside their band of the picture.
+Tops, bottoms and kurtas are cut with the cloth segmentation masks (upper/lower/full-body clothes) passed
+in by the caller, so a shirt layer never carries a strip of trousers and the other way round. Shoes,
+watches, sunglasses and caps are cut from the colour difference against the base inside their band of the
+picture. Outerwear is cut from the changed pixels around the torso only, so the tee visible inside an open
+blazer stays transparent and the chosen shirt shows through.
 
 Trouser layers are extended a little upwards under where the base tee ends (mirrored trouser texture), so a
 shirt that is shorter than the base tee shows trousers below its hem instead of the old white tee.
@@ -27,16 +29,41 @@ import numpy as np
 from PIL import Image
 
 CANVAS = (960, 1280)  # width, height (3:4)
-SLOTS = ("top", "bottom", "shoes", "watch")
-SLOT_LABELS = {"top": "Shirts", "bottom": "Trousers", "shoes": "Shoes", "watch": "Watches"}
+SLOTS = ("top", "kurta", "outerwear", "bottom", "shoes", "watch", "eyewear", "headwear")
+SLOT_LABELS = {
+    "top": "Shirts",
+    "kurta": "Kurtas",
+    "outerwear": "Waistcoats & blazers",
+    "bottom": "Trousers & shalwar",
+    "shoes": "Shoes",
+    "watch": "Watches",
+    "eyewear": "Sunglasses",
+    "headwear": "Caps",
+}
 # Drawing order, lowest first. "base_bottom" / "base_top" are the base's own trousers (with the waist
-# extension) and tee, cut from the base itself. The web app draws base_bottom when a top is worn without a
-# chosen bottom (so a short shirt shows trousers under its hem), and base_top when a bottom is worn without a
-# chosen top (so the trousers' waist extension does not crop the tee).
-Z_ORDER = {"shoes": 1, "bottom": 2, "base_bottom": 2, "top": 3, "base_top": 3, "watch": 4}
+# extension) and tee, cut from the base itself. The web app draws base_bottom when a top or kurta is worn
+# without a chosen bottom (so a short shirt shows trousers under its hem), and base_top when a bottom is
+# worn without a chosen top or kurta (so the trousers' waist extension does not crop the tee).
+Z_ORDER = {
+    "shoes": 1,
+    "bottom": 2,
+    "base_bottom": 2,
+    "top": 3,
+    "kurta": 3,
+    "base_top": 3,
+    "outerwear": 4,
+    "watch": 5,
+    "eyewear": 6,
+    "headwear": 7,
+}
 
 # Vertical bands (fractions of the canvas height) for the slots cut by colour difference only.
-BANDS = {"shoes": (0.80, 1.0), "watch": (0.36, 0.66)}
+BANDS = {
+    "shoes": (0.80, 1.0),
+    "watch": (0.36, 0.66),
+    "eyewear": (0.0, 0.25),
+    "headwear": (0.0, 0.20),
+}
 
 # Starting values, checked on the first men's pilot (10 renders): ECC correlation 0.993 to 0.999, shifts
 # under 1 px, 0.0 to 0.5 % of pixels outside the layer changed. A render that fails these moved the person.
@@ -186,16 +213,36 @@ def mirror_fill(image: np.ndarray, zone: np.ndarray, lower: np.ndarray) -> np.nd
     return out
 
 
+def _cloth_parts(cloth: tuple[np.ndarray, ...]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """`(upper, lower, full)` from a two- or three-mask segmenter result."""
+    if len(cloth) < 2:
+        raise ValueError(f"cloth masks need at least upper and lower, got {len(cloth)}")
+    upper, lower = cloth[0].astype(bool), cloth[1].astype(bool)
+    full = cloth[2].astype(bool) if len(cloth) > 2 else np.zeros_like(upper, dtype=bool)
+    return upper, lower, full
+
+
+def torso_to_knee(base_upper: np.ndarray, base_lower: np.ndarray) -> np.ndarray:
+    """The body from the top of the base tee down to 80% of the canvas height, near the base clothes."""
+    height = base_upper.shape[0]
+    rows = np.nonzero(base_upper.any(axis=1))[0]
+    top = int(rows.min()) if len(rows) else 0
+    band = np.zeros_like(base_upper, dtype=bool)
+    band[top:int(0.80 * height)] = True
+    near_clothes = cv2.dilate((base_upper | base_lower).astype(np.uint8), _disk(61)).astype(bool)
+    return band & near_clothes
+
+
 def build_layer(
     base: np.ndarray,
     aligned: np.ndarray,
     slot: str,
-    base_cloth: tuple[np.ndarray, np.ndarray],
-    render_cloth: tuple[np.ndarray, np.ndarray],
+    base_cloth: tuple[np.ndarray, ...],
+    render_cloth: tuple[np.ndarray, ...],
 ) -> tuple[np.ndarray, int]:
-    """RGBA layer (canvas size) for one slot, and how many parts it has. Cloth masks are (upper, lower)."""
-    base_upper, base_lower = base_cloth
-    upper, lower = render_cloth
+    """RGBA layer (canvas size) for one slot, and how many parts it has. Cloth masks are (upper, lower, full)."""
+    base_upper, base_lower, _base_full = _cloth_parts(base_cloth)
+    upper, lower, full = _cloth_parts(render_cloth)
     changed = delta_e(base, aligned) > DIFF_THRESHOLD
     rgb = aligned
     if slot in ("top", "base_top"):
@@ -203,8 +250,17 @@ def build_layer(
         mask = (upper | (changed & near_base_top)) & ~lower
         mask, parts = _largest(_open(mask, 5))
         mask = _fill_holes(mask) & ~lower
+    elif slot == "kurta":
+        # The kurta covers the trouser top on purpose, so do not subtract the lower cloth mask.
+        torso = torso_to_knee(base_upper, base_lower)
+        mask, parts = _largest((changed & torso) | upper | full)
+        mask = _fill_holes(mask)
+    elif slot == "outerwear":
+        # No cloth mask: the tee inside an open blazer must stay transparent so the chosen shirt shows.
+        near_torso = cv2.dilate(base_upper.astype(np.uint8), _disk(41)).astype(bool)
+        mask, parts = _largest(_close(changed & near_torso, 7), 2)
     elif slot in ("bottom", "base_bottom"):
-        near_base_bottom = cv2.dilate(base_lower.astype(np.uint8), _disk(31)).astype(bool)
+        near_base_bottom = cv2.dilate(base_lower.astype(np.uint8), _disk(81)).astype(bool)
         mask = (lower | (changed & near_base_bottom)) & ~upper
         mask, parts = _largest(_open(mask, 5))
         zone = hem_zone(base_upper, lower) & ~mask
@@ -215,8 +271,11 @@ def build_layer(
         mask = changed.copy()
         mask[:top] = False
         mask[bottom:] = False
-        mask = _close(_open(mask, 3 if slot == "watch" else 5), 7)
-        mask, parts = _largest(mask, 2 if slot == "shoes" else 1)
+        if slot == "headwear":
+            mask, parts = _largest(mask, 1)
+        else:
+            mask = _close(_open(mask, 3 if slot in ("watch", "eyewear") else 5), 7)
+            mask, parts = _largest(mask, 2 if slot == "shoes" else 1)
         mask = _fill_holes(mask)
     else:
         raise ValueError(f"unknown slot {slot!r}")
@@ -238,12 +297,12 @@ def make_layer(
     base: np.ndarray,
     render: np.ndarray,
     slot: str,
-    base_cloth: tuple[np.ndarray, np.ndarray],
+    base_cloth: tuple[np.ndarray, ...],
     segment,
 ) -> tuple[np.ndarray, LayerReport]:
-    """Align a render, segment it with `segment(aligned) -> (upper, lower)`, cut the layer and report."""
+    """Align a render, segment it with `segment(aligned) -> (upper, lower[, full])`, cut the layer and report."""
     aligned, alignment = align(base, render)
-    render_cloth = segment(aligned) if slot in ("top", "bottom") else base_cloth
+    render_cloth = segment(aligned) if slot in ("top", "kurta", "bottom") else base_cloth
     layer, parts = build_layer(base, aligned, slot, base_cloth, render_cloth)
     report = LayerReport(
         slot=slot, ecc=alignment.ecc, shift_x=alignment.shift_x, shift_y=alignment.shift_y,
@@ -268,9 +327,13 @@ def problems(report: LayerReport) -> list[str]:
         reasons.append(f"{report.keep_change:.1%} of the picture outside the item changed (pose or framing moved)")
     if report.layer_share < 0.0002:
         reasons.append("no change found for this item")
-    expected = 2 if report.slot == "shoes" else 1
-    if report.components < expected:
-        reasons.append(f"found {report.components} part(s), expected {expected}")
+    if report.slot == "outerwear":
+        if report.components < 1:
+            reasons.append("found 0 part(s), expected at least 1")
+    else:
+        expected = 2 if report.slot == "shoes" else 1
+        if report.components < expected:
+            reasons.append(f"found {report.components} part(s), expected {expected}")
     return reasons
 
 
