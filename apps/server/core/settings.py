@@ -1,7 +1,10 @@
 import os
+import secrets
+import warnings
+from datetime import timedelta
 from pathlib import Path
+import dj_database_url
 
-# Load environment variables from .env file if python-dotenv is installed
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -9,25 +12,23 @@ except ImportError:
     pass
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = 'django-insecure-fyp-secret-key-wear-right-2026'
-DEBUG = True
-ALLOWED_HOSTS = ['*']
 
-# Security Settings
-SECRET_KEY = os.environ.get(
-    'SECRET_KEY',
-    'django-insecure-fyp-secret-key-wear-right-2026'
-)
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    if DEBUG:
+        warnings.warn("SECRET_KEY not found in environment. Generating a throwaway key for local development.")
+        SECRET_KEY = secrets.token_urlsafe(50)
+    else:
+        raise ValueError("SECRET_KEY environment variable is required")
 
-allowed_hosts_str = os.environ.get('ALLOWED_HOSTS', '*')
+allowed_hosts_str = os.environ.get('ALLOWED_HOSTS', '')
 if allowed_hosts_str == '*':
     ALLOWED_HOSTS = ['*']
 else:
     ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_str.split(',') if host.strip()]
 
-# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -36,15 +37,21 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'corsheaders',
-    'api',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
+    'dj_rest_auth',
+    # Domain apps
+    'core',
+    'accounts',
+    'catalog',
+    'scanner',
+    'recommender',
+    'orders',
+    'staff',
 ]
 
 MIDDLEWARE = [
-    
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -71,122 +78,106 @@ TEMPLATES = [
     },
 ]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
-# Database Configuration
-# Priority:
-# 1. DATABASE_URL (Neon, Supabase, Railway, Render Postgres URL)
-# 2. DB_ENGINE=postgresql (with DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT)
-# 3. Default: SQLite (BASE_DIR / 'db.sqlite3') for zero-setup local dev
-database_url = os.environ.get('DATABASE_URL', '').strip()
-db_engine = os.environ.get('DB_ENGINE', '').lower().strip()
-use_sqlite = os.environ.get('USE_SQLITE', '').lower().strip() in ('true', '1', 'yes')
-
-
-
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'wear_right_db',
-        'USER': 'postgres',
-        'PASSWORD': 'your_secure_password',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
+    'default': dj_database_url.config(
+        default="postgres://wearright:wearright@localhost:5433/wearright",
+        conn_max_age=600
+    )
 }
-if database_url:
-    try:
-        import dj_database_url
-        DATABASES = {'default': dj_database_url.parse(database_url)}
-    except ImportError:
-        import urllib.parse
-        url = urllib.parse.urlparse(database_url)
-        if url.scheme in ('postgres', 'postgresql'):
-            DATABASES = {
-                'default': {
-                    'ENGINE': 'django.db.backends.postgresql',
-                    'NAME': url.path.lstrip('/'),
-                    'USER': url.username or '',
-                    'PASSWORD': url.password or '',
-                    'HOST': url.hostname or 'localhost',
-                    'PORT': str(url.port or 5432),
-                }
-            }
-        else:
-            DATABASES = {
-                'default': {
-                    'ENGINE': 'django.db.backends.sqlite3',
-                    'NAME': BASE_DIR / 'db.sqlite3',
-                }
-            }
-elif db_engine == 'postgresql' and not use_sqlite:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB_NAME', 'wear_right_db'),
-            'USER': os.environ.get('DB_USER', 'postgres'),
-            'PASSWORD': os.environ.get('DB_PASSWORD', 'your_secure_password'),
-            'HOST': os.environ.get('DB_HOST', 'localhost'),
-            'PORT': os.environ.get('DB_PORT', '5432'),
-        }
-    }
-else:
-    # Safe zero-friction local SQLite database
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+
+# Deliberately light for a student project: a minimum length only. Add the similarity, common-password
+# and numeric validators back here if this ever faces real users.
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 6}},
+]
 
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'core.authentication.JWTCookieAuthentication',
+    ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
-    ]
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    ],
+    'EXCEPTION_HANDLER': 'core.exceptions.custom_exception_handler',
+    'DEFAULT_THROTTLE_RATES': {
+        'password_reset': '5/hour',
+    },
 }
 
-# CORS & CSRF Configuration
-default_cors_origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
-    "https://wear-right-olive.vercel.app",
+# JWT lives in httpOnly cookies, never in JS-readable storage.
+# JWT_AUTH_SECURE is False because local development runs on plain http.
+REST_AUTH = {
+    'USE_JWT': True,
+    'TOKEN_MODEL': None,
+    'SESSION_LOGIN': False,
+    'JWT_AUTH_COOKIE': 'wr-access',
+    'JWT_AUTH_REFRESH_COOKIE': 'wr-refresh',
+    'JWT_AUTH_HTTPONLY': True,
+    'JWT_AUTH_SAMESITE': 'Lax',
+    'JWT_AUTH_SECURE': False,
+    # Cookie-authenticated requests must carry Django's CSRF token (X-CSRFToken header).
+    'JWT_AUTH_COOKIE_USE_CSRF': True,
+    'LOGIN_SERIALIZER': 'accounts.serializers.LoginSerializer',
+    # Our serializers: they email the FRONTEND_URL link through core.emails and share one no-enumeration answer.
+    'PASSWORD_RESET_SERIALIZER': 'accounts.serializers.PasswordResetRequestSerializer',
+    'PASSWORD_RESET_CONFIRM_SERIALIZER': 'accounts.serializers.PasswordResetConfirmSerializer',
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+}
+
+# The browser only talks to the Next.js origin; its rewrite forwards /api/* to Django,
+# so Origin is the Next.js origin while Host is Django's. Trust the Next.js origins for CSRF.
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        'CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000'
+    ).split(',')
+    if origin.strip()
 ]
 
-cors_env = os.environ.get('CORS_ALLOWED_ORIGINS', '').strip()
-if cors_env:
-    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_env.split(',') if origin.strip()]
-else:
-    CORS_ALLOWED_ORIGINS = default_cors_origins
-
-# Enable full wildcard origin if explicitly set for demo
-CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() in ('true', '1', 'yes')
-
-csrf_env = os.environ.get('CSRF_TRUSTED_ORIGINS', '').strip()
-if csrf_env:
-    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_env.split(',') if origin.strip()]
-else:
-    CSRF_TRUSTED_ORIGINS = default_cors_origins
-
-# Internationalization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static & Media Files
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-MEDIA_URL = '/products/'
-MEDIA_ROOT = BASE_DIR / 'products'
+MEDIA_URL = '/media/'
+# Product photos live outside the code: point MEDIA_ROOT at any folder (see .env.example).
+MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', BASE_DIR / 'media'))
+# Local deployments serve /media/ from Django (core/urls.py) while DEBUG is on or off.
+# In production put a web server in front of Django, point it at MEDIA_ROOT and set
+# SERVE_MEDIA=False so Django stops serving files itself.
+SERVE_MEDIA = os.environ.get('SERVE_MEDIA', 'True').lower() in ('true', '1', 'yes')
 
+# Email: in development Mailpit receives everything at localhost:1025 and shows it at
+# http://localhost:8025 (see docker-compose.yml). Point these at any SMTP provider to deploy.
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '1025'))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'False').lower() in ('true', '1', 'yes')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Wear Right <no-reply@wearright.local>')
+
+# Emails link to the Next.js app, never to Django.
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
+PASSWORD_RESET_TIMEOUT = int(os.environ.get('PASSWORD_RESET_TIMEOUT', '3600'))  # one hour
+
+# Local AI model weights (rembg, MediaPipe). Filled by `make models`; never committed.
+ML_MODELS_DIR = Path(os.environ.get('ML_MODELS_DIR', BASE_DIR / 'ml_models'))
+
+# Demo catalog: shoppers only see products that are on the mannequin (staff still see everything).
+SHOP_MANNEQUIN_ONLY = os.environ.get('SHOP_MANNEQUIN_ONLY', 'False').lower() in ('true', '1', 'yes')
+
+# Face scan photo checks: override any threshold from scanner/engine/quality.py THRESHOLDS, e.g.
+# SKIN_SCAN_QUALITY = {"cast_b_warm_fail": 24.0}. Empty uses the defaults.
+SKIN_SCAN_QUALITY = {}
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

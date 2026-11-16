@@ -1,0 +1,32 @@
+# Host port is 5433 because 5432 is commonly taken by a local Postgres install.
+name: wear-right
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: wearright-db
+    environment:
+      POSTGRES_DB: wearright
+      POSTGRES_USER: wearright
+      POSTGRES_PASSWORD: wearright
+    ports:
+      - "5433:5432"
+    volumes:
+      - wearright_pg:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wearright -d wearright"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Local mail catcher: Django sends SMTP to :1025, the inbox is at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit
+    container_name: wearright-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    restart: unless-stopped
+
+volumes:
+  wearright_pg:

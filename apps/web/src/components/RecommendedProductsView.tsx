@@ -1,0 +1,477 @@
+"use client";
+
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "@/lib/navigation";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Palette,
+  RefreshCw,
+  Search,
+  ShoppingBag,
+  ShoppingCart,
+  Sparkles,
+} from "lucide-react";
+
+import { CartProduct } from "@/features/cart/types";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { useCart } from "@/features/cart/useCart";
+import { recommenderApi, type Palette as TonePalette, type PickedItem } from "@/features/recommender/api";
+import {
+  normalizeSkinTone,
+  normalizeStyle,
+  prettyLabel,
+  SkinToneKey,
+  StyleKey,
+} from "@/features/recommender/recommendationRules";
+import { PLACEHOLDER_IMAGE } from "@/lib/config";
+import ProductImage from "@/components/ProductImage";
+
+type RecommendationProduct = CartProduct & {
+  style: string;
+  color: string;
+  color_hex: string;
+  garment_type: string;
+  stock_quantity: number;
+  status: string;
+  match: number;
+  reason: string;
+};
+
+const styleOptions: StyleKey[] = ["eastern", "western", "casual", "formal"];
+
+export default function RecommendedProductsView() {
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
+  const { addToCart } = useCart();
+  const [searchParams] = useSearchParams();
+
+  const skinToneFromUrl = searchParams.get("skinTone");
+  const skinToneFromUser = user.contrastType;
+
+  const detectedSkinTone: SkinToneKey = normalizeSkinTone(
+    skinToneFromUrl || skinToneFromUser || "medium",
+  );
+  const undertone = searchParams.get("undertone") || profile?.undertone || "";
+
+  const [selectedStyle, setSelectedStyle] = useState<StyleKey | "">("");
+  // Colour theme: after a scan the shopper says "yes, that's me" and lands here with ?theme=palette, so only
+  // clothes in their palette show. A tapped swatch narrows it to that one colour.
+  const [paletteOnly, setPaletteOnly] = useState(searchParams.get("theme") === "palette");
+  const [colourFilter, setColourFilter] = useState(searchParams.get("colour") || "");
+  const [searchText, setSearchText] = useState("");
+  const [products, setProducts] = useState<RecommendationProduct[]>([]);
+  const [palette, setPalette] = useState<TonePalette>({ best: [], avoid: [] });
+  const requestKey = `${detectedSkinTone}|${undertone}|${selectedStyle}|${paletteOnly}|${colourFilter}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const loading = loadedKey !== requestKey;
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const placeholderImage = PLACEHOLDER_IMAGE;
+
+  const formatPrice = (price: string | number) => {
+    return `Rs. ${Number(price || 0).toLocaleString("en-PK")}`;
+  };
+
+  const isOutOfStock = (product: RecommendationProduct) => {
+    return (
+      product.stock_quantity <= 0 ||
+      product.status === "Out of Stock" ||
+      product.status === "Inactive"
+    );
+  };
+
+  const toProduct = (item: PickedItem): RecommendationProduct => {
+    const style = normalizeStyle(item.style_tags?.[0] || item.cultural_tag || "casual");
+    return {
+      id: item.id,
+      name: item.name,
+      category: item.category || "Product",
+      style,
+      color: item.matched_colour || item.color_name || "",
+      color_hex: item.color_hex || "",
+      garment_type: item.slot || "",
+      cultural_tag: item.cultural_tag || style,
+      compatible_skin_tone: "",
+      image_url: null,
+      image: item.image || placeholderImage,
+      price: Number(item.price || 0),
+      stock_quantity: Number(item.stock_quantity || 0),
+      status: item.status || "Active",
+      match: item.match,
+      reason: item.reason,
+    };
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    recommenderApi
+      .topPicks({
+        depth: detectedSkinTone,
+        undertone,
+        style: selectedStyle,
+        palette_only: paletteOnly ? 1 : undefined,
+        colour: colourFilter || undefined,
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setProducts(data.items.map(toProduct));
+        setPalette(data.palette);
+        setErrorMessage("");
+        setLoadedKey(requestKey);
+      })
+      .catch((error) => {
+        console.error("Recommended Products API Error:", error);
+        if (!cancelled) {
+          setErrorMessage("Unable to load recommended products from the server.");
+          setLoadedKey(requestKey);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- toProduct only reads constants
+  }, [detectedSkinTone, undertone, selectedStyle, paletteOnly, colourFilter, requestKey]);
+
+  const recommendedProducts = useMemo(() => {
+    const search = searchText.trim().toLowerCase();
+    if (!search) return products;
+    return products.filter((product) =>
+      `${product.name} ${product.category} ${product.style} ${product.color} ${product.garment_type}`
+        .toLowerCase()
+        .includes(search),
+    );
+  }, [products, searchText]);
+
+  const openCompleteOutfit = (product: RecommendationProduct) => {
+    navigate(
+      `/complete-outfit?skinTone=${detectedSkinTone}&undertone=${undertone}&style=${selectedStyle || "casual"}&productId=${product.id}`,
+    );
+  };
+
+  return (
+    <div className="w-full min-h-[calc(100vh-80px)] bg-cream-base px-6 py-10 text-left font-sans">
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-slate-950 rounded-3xl p-7 sm:p-10 text-white shadow-xl mb-8 relative overflow-hidden">
+          <div className="absolute right-0 top-0 w-72 h-72 bg-sage-green/100/20 rounded-full blur-3xl" />
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.25em] text-sage-green/80 font-black mb-3">
+                AI Recommended Products
+              </p>
+
+              <h1 className="text-3xl sm:text-5xl font-black tracking-tight">
+                Recommended for {prettyLabel(detectedSkinTone)} Skin Tone
+              </h1>
+
+              {searchParams.get("confidence") && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold font-sans mt-3">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Match Confidence: {searchParams.get("confidence")}%
+                </div>
+              )}
+
+              <p className="text-sm text-slate-300 font-semibold mt-3 max-w-2xl leading-relaxed">
+                Ranked for your skin tone{undertone ? ` and ${undertone} undertone` : ""}: colour match,
+                your style and your size. Each pick says why it was chosen.
+              </p>
+            </div>
+
+            <button
+              onClick={() => navigate("/facescan")}
+              className="bg-white/10 hover:bg-white/20 border border-white/10 text-white px-5 py-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Re-Scan
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white border border-brand-border/60 rounded-3xl p-5 shadow-sm mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            <div>
+              <h2 className="text-xl font-black text-brand-dark">
+                Prefer a style?
+              </h2>
+              <p className="text-sm text-slate-500 font-semibold mt-1">
+                Optional. Picks in your chosen style rank higher; tap it again to clear.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              {styleOptions.map((style) => (
+                <button
+                  key={style}
+                  onClick={() => setSelectedStyle(selectedStyle === style ? "" : style)}
+                  className={`px-5 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                    selectedStyle === style
+                      ? "bg-emerald-600 text-white shadow-lg shadow-brand-gold/10"
+                      : "bg-cream-base text-slate-700 border border-brand-border/60 hover:bg-cream-card/60"
+                  }`}
+                >
+                  {prettyLabel(style)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ColorBox
+              title="Your best colours"
+              colors={palette.best}
+              selected={colourFilter}
+              onPick={(name) => setColourFilter(colourFilter === name ? "" : name)}
+            />
+            <ColorBox title="Colours to avoid" colors={palette.avoid} />
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3" data-testid="colour-theme">
+            <span className="text-xs font-black uppercase tracking-widest text-slate-500">Colour theme</span>
+            <button
+              type="button"
+              aria-pressed={paletteOnly}
+              data-testid="theme-palette"
+              onClick={() => setPaletteOnly(true)}
+              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest ${
+                paletteOnly ? "bg-emerald-600 text-white" : "bg-cream-base text-slate-700 border border-brand-border/60"
+              }`}
+            >
+              Only my colours
+            </button>
+            <button
+              type="button"
+              aria-pressed={!paletteOnly}
+              data-testid="theme-all"
+              onClick={() => setPaletteOnly(false)}
+              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest ${
+                !paletteOnly ? "bg-emerald-600 text-white" : "bg-cream-base text-slate-700 border border-brand-border/60"
+              }`}
+            >
+              All good matches
+            </button>
+            {colourFilter && (
+              <button
+                type="button"
+                onClick={() => setColourFilter("")}
+                className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-white border border-brand-border/60 text-slate-700"
+              >
+                Showing {colourFilter} · clear
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white border border-brand-border/60 rounded-3xl p-5 shadow-sm mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
+            <div>
+              <h2 className="text-xl font-black text-brand-dark">
+                Matching Products
+              </h2>
+              <p className="text-sm text-slate-500 font-semibold mt-1">
+                {recommendedProducts.length} picks, best match first
+              </p>
+            </div>
+
+            <div className="relative w-full lg:w-80">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+
+              <input
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                placeholder="Search recommended products..."
+                className="w-full bg-white border border-brand-border/60 rounded-xl py-3 pl-10 pr-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-sage-green/20 focus:border-sage-green"
+              />
+            </div>
+          </div>
+        </div>
+
+        {errorMessage && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm font-bold mb-8">
+            {errorMessage}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="bg-white border border-brand-border/60 rounded-3xl p-12 text-center">
+            <p className="text-sm font-black text-slate-700">
+              Loading recommended products...
+            </p>
+          </div>
+        ) : recommendedProducts.length === 0 ? (
+          <div className="bg-white border border-brand-border/60 rounded-3xl p-12 text-center">
+            <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-xl font-black text-brand-dark">
+              No recommended products found
+            </h3>
+            <p className="text-sm text-slate-500 font-semibold mt-2 max-w-xl mx-auto">
+              Nothing in stock matches this skin tone yet. Try clearing the style
+              preference, or ask the store to add more colours.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {recommendedProducts.map((product) => (
+              <article
+                key={product.id}
+                className={`bg-white border border-brand-border/60 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all ${
+                  isOutOfStock(product) ? "opacity-70" : ""
+                }`}
+              >
+                <div className="aspect-[3/4] bg-cream-card/60 relative overflow-hidden">
+                  <ProductImage
+                    src={String(product.image || placeholderImage)}
+                    alt={product.name}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                  />
+
+                  <div className="absolute top-3 left-3 bg-emerald-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    {product.match}% match
+                  </div>
+
+                  <div
+                    className={`absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      isOutOfStock(product)
+                        ? "bg-red-600 text-white"
+                        : "bg-emerald-600 text-white"
+                    }`}
+                  >
+                    {isOutOfStock(product)
+                      ? "Out of Stock"
+                      : `${product.stock_quantity} Stock`}
+                  </div>
+                </div>
+
+                <div className="p-5">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[10px] uppercase tracking-widest text-sage-green font-black">
+                      {prettyLabel(product.style)}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-widest text-slate-400 font-black">
+                      {prettyLabel(product.garment_type)}
+                    </span>
+                  </div>
+
+                  <h3 className="text-sm font-black text-brand-dark line-clamp-1">
+                    {product.name}
+                  </h3>
+
+                  <p className="text-xs text-slate-500 font-bold mt-1">
+                    {product.category}
+                  </p>
+
+                  <p data-testid="pick-reason" className="text-xs text-emerald-700 font-semibold mt-2 leading-snug">
+                    {product.reason}
+                  </p>
+
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <span className="text-xs font-black text-slate-500">
+                      Color
+                    </span>
+                    <span className="text-xs font-black text-brand-dark">
+                      {prettyLabel(product.color || "Not Set")}
+                    </span>
+                  </div>
+
+                  <div className="mt-1 flex items-center justify-between gap-3">
+                    <span className="text-xs font-black text-slate-500">
+                      Price
+                    </span>
+                    <span className="text-sm font-black text-brand-dark">
+                      {formatPrice(product.price)}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 space-y-2">
+                    <button
+                      onClick={() => addToCart(product)}
+                      disabled={isOutOfStock(product)}
+                      className={`w-full py-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 ${
+                        isOutOfStock(product)
+                          ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                          : "bg-brand-gold hover:opacity-90 text-white shadow-lg shadow-brand-gold/10"
+                      }`}
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      Add to Cart
+                    </button>
+
+                    <button
+                      onClick={() => openCompleteOutfit(product)}
+                      className="w-full py-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 bg-slate-950 hover:bg-black text-white"
+                    >
+                      <ShoppingBag className="w-4 h-4" />
+                      Complete Outfit
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ColorBox({
+  title,
+  colors,
+  selected,
+  onPick,
+}: {
+  title: string;
+  colors: { name: string; hex: string | null }[];
+  selected?: string;
+  /** When set, each swatch is a button that filters the picks to that colour. */
+  onPick?: (name: string) => void;
+}) {
+  return (
+    <div className="bg-cream-base border border-slate-100 rounded-2xl p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Palette className="w-4 h-4 text-sage-green" />
+        <h3 className="text-xs font-black uppercase tracking-widest text-slate-600">
+          {title}
+        </h3>
+        {onPick && colors.length > 0 && (
+          <span className="text-[10px] font-semibold text-slate-400">tap a colour to see only that</span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {colors.length === 0 && (
+          <span className="text-xs text-slate-400 font-semibold">Scan your face to see your colours.</span>
+        )}
+        {colors.map((color) => {
+          const swatch = (
+            <>
+              <span className="w-3.5 h-3.5 rounded-full border border-slate-200" style={{ background: color.hex ?? "#ccc" }} />
+              {color.name}
+            </>
+          );
+          const classes = `border pl-2 pr-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1.5 ${
+            selected === color.name ? "bg-emerald-600 text-white border-emerald-600" : "bg-white border-brand-border/60 text-slate-700"
+          }`;
+          return onPick ? (
+            <button
+              key={`${title}-${color.name}`}
+              type="button"
+              aria-pressed={selected === color.name}
+              data-testid="palette-swatch"
+              onClick={() => onPick(color.name)}
+              className={classes}
+            >
+              {swatch}
+            </button>
+          ) : (
+            <span key={`${title}-${color.name}`} className={classes}>
+              {swatch}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

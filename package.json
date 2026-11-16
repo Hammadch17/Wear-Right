@@ -1,0 +1,16 @@
+{
+  "name": "wear-right",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n web,api -c cyan,yellow \"npm:dev:web\" \"npm:dev:api\"",
+    "dev:web": "npm --prefix apps/web run dev",
+    "dev:api": "node scripts/run-python.mjs apps/server/manage.py runserver 8000",
+    "demo": "concurrently -n web,api -c cyan,yellow \"npm --prefix apps/web run start\" \"node scripts/run-python.mjs apps/server/manage.py runserver 8000 --noreload\"",
+    "setup": "node scripts/wearright.mjs install",
+    "seed:all": "node scripts/wearright.mjs seed",
+    "demo:all": "node scripts/wearright.mjs demo"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.7"
+  }
+}

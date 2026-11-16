@@ -1,19 +1,19 @@
-from django.contrib import admin
-from django.urls import path, include
-from django.urls import path, include, re_path
 from django.conf import settings
-from django.conf.urls.static import static
-from django.views.static import serve
+from django.contrib import admin
+from django.urls import include, path, re_path
+
+from core.views import serve_media
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('api.urls')),
+    # Admin panel API first: its own login, cookies and RBAC (see staff/).
+    path('api/admin/', include('staff.urls')),
+    path('api/', include('accounts.urls')),
+    path('api/', include('catalog.urls')),
+    path('api/', include('scanner.urls')),
+    path('api/', include('recommender.urls')),
+    path('api/', include('orders.urls')),
+    # Product photos. static() only serves with DEBUG=True, which broke the production
+    # demo build; this serves whenever SERVE_MEDIA is on (see core.views.serve_media).
+    re_path(r'^media/(?P<path>.*)$', serve_media),
 ]
-
-# Serve media files in development via static(), or in demo production via serve()
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-else:
-    urlpatterns += [
-        re_path(r'^products/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
-    ]

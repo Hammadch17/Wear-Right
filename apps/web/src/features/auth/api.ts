@@ -1,0 +1,62 @@
+import { apiGet, apiSend } from "@/lib/api";
+
+export type ApiUser = {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  name: string;
+  is_staff: boolean;
+  is_superuser: boolean;
+};
+
+export type ApiProfile = {
+  id: number;
+  user: number;
+  skin_tone: string | null;
+  monk_tone: number | null;
+  undertone: "warm" | "cool" | "neutral" | null;
+  body_preset: "slim" | "regular" | "plus";
+  cultural_preference: string;
+  gender: "male" | "female" | "unspecified";
+  /** A style slug from the Styles table, or "mixed". */
+  preferred_style: string;
+  top_size: string;
+  bottom_size: string;
+  shoe_size: string;
+};
+
+export type Session = { user: ApiUser; profile: ApiProfile };
+
+export type ProfilePatch = Partial<
+  Pick<
+    ApiProfile,
+    "skin_tone" | "monk_tone" | "undertone" | "body_preset" | "cultural_preference" | "gender" | "preferred_style" | "top_size" | "bottom_size" | "shoe_size"
+  >
+> & { name?: string };
+
+export const authApi = {
+  me: () => apiGet<Session>("/api/auth/me/"),
+
+  /** `identifier` is an email address or a username. */
+  login: (identifier: string, password: string) =>
+    apiSend<Session>("POST", "/api/auth/login/", {
+      ...(identifier.includes("@") ? { email: identifier } : { username: identifier }),
+      password,
+    }),
+
+  register: (input: { name: string; email: string; password: string; password_confirm?: string }) =>
+    apiSend<Session>("POST", "/api/auth/register/", input),
+
+  /** The answer is deliberately the same for a real and an unknown address. */
+  requestPasswordReset: (email: string) =>
+    apiSend<{ detail: string }>("POST", "/api/auth/password/reset/", { email }),
+
+  confirmPasswordReset: (input: { uid: string; token: string; new_password1: string; new_password2: string }) =>
+    apiSend<{ detail: string }>("POST", "/api/auth/password/reset/confirm/", input),
+
+  logout: () => apiSend<{ detail: string }>("POST", "/api/auth/logout/", {}),
+
+  updateMe: (patch: ProfilePatch) => apiSend<Session>("PATCH", "/api/auth/me/", patch),
+};
