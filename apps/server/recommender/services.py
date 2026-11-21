@@ -33,11 +33,13 @@ from catalog.engine.color import REFERENCE_COLORS
 
 from .adapter import build_profile, product_to_item
 from .engine.default_rules import build_default_rules
+from .engine.items import Profile
 from .engine.looks import complete_look
 from .engine.palette import Palette
 from .engine.ranker import DEFAULT_LIMIT, rank
+from .engine.tone_picks import tone_picks as pick_tone_groups
 from .models import ToneColorRule
-from .selectors import get_palette_rules, get_shoppable_products
+from .selectors import get_palette_rules, get_shoppable_products, get_tone_products
 
 
 def seed_default_rules():
@@ -67,6 +69,25 @@ def top_picks(user, params, limit=DEFAULT_LIMIT):
     for row in results:
         row['product'] = products[row['item'].id]
     return profile, palette, results
+
+
+def tone_picks(tone, gender, undertone=''):
+    """(profile, palette, groups) for one gender and tone; each group carries up to two Products."""
+    profile = Profile(depth=tone, undertone=undertone or 'neutral', gender=gender)
+    palette = palette_for(profile)
+    products = {p.id: p for p in get_tone_products(tone, gender)}
+    items = [product_to_item(product) for product in products.values()]
+    groups = pick_tone_groups(items, tone, gender, palette, undertone=undertone)
+    return profile, palette, [
+        {
+            'key': group.key,
+            'label': group.label,
+            'slots': list(group.slots),
+            'short': group.short,
+            'items': [{'item': item, 'product': products[item.id]} for item in group.items],
+        }
+        for group in groups
+    ]
 
 
 def build_look(user, params, product):

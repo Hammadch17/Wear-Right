@@ -56,6 +56,23 @@ export type CompleteLookResponse = {
 
 export type PaletteResponse = Palette & { status: string };
 
+/** Two products per group for one gender and skin tone. `short` groups have fewer than two. */
+export type TonePickGroup = {
+  key: string;
+  label: string;
+  slots: string[];
+  short: boolean;
+  items: ApiItem[];
+};
+export type TonePicksResponse = {
+  status: string;
+  tone: string;
+  gender: string;
+  undertone: string;
+  groups: TonePickGroup[];
+  short_groups: string[];
+};
+
 export type ShopperParams = {
   depth?: string;
   undertone?: string;
@@ -84,4 +101,6 @@ export const recommenderApi = {
   completeLook: (productId: string | number, params: ShopperParams = {}) =>
     apiGet<CompleteLookResponse>(`/api/looks/complete/${query({ product_id: productId, ...params })}`),
   palette: (params: ShopperParams) => apiGet<PaletteResponse>(`/api/tone-rules/palette/${query(params)}`),
+  tonePicks: (params: { tone: string; gender: string; undertone?: string }) =>
+    apiGet<TonePicksResponse>(`/api/recommendations/tone-picks/${query(params)}`),
 };

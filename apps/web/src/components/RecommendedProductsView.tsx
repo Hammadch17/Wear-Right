@@ -26,6 +26,7 @@ import {
 } from "@/features/recommender/recommendationRules";
 import { PLACEHOLDER_IMAGE } from "@/lib/config";
 import ProductImage from "@/components/ProductImage";
+import { genderFromProfile, type ScanGender } from "@/features/scanner/gender";
 
 type RecommendationProduct = CartProduct & {
   style: string;
@@ -53,6 +54,12 @@ export default function RecommendedProductsView() {
     skinToneFromUrl || skinToneFromUser || "medium",
   );
   const undertone = searchParams.get("undertone") || profile?.undertone || "";
+  const genderFromUrl = searchParams.get("gender");
+  const gender: ScanGender | null =
+    genderFromUrl === "men" || genderFromUrl === "women"
+      ? genderFromUrl
+      : genderFromProfile(profile?.gender);
+  const genderLabel = gender === "women" ? "Women's" : gender === "men" ? "Men's" : "";
 
   const [selectedStyle, setSelectedStyle] = useState<StyleKey | "">("");
   // Colour theme: after a scan the shopper says "yes, that's me" and lands here with ?theme=palette, so only
@@ -62,7 +69,7 @@ export default function RecommendedProductsView() {
   const [searchText, setSearchText] = useState("");
   const [products, setProducts] = useState<RecommendationProduct[]>([]);
   const [palette, setPalette] = useState<TonePalette>({ best: [], avoid: [] });
-  const requestKey = `${detectedSkinTone}|${undertone}|${selectedStyle}|${paletteOnly}|${colourFilter}`;
+  const requestKey = `${detectedSkinTone}|${undertone}|${selectedStyle}|${paletteOnly}|${colourFilter}|${gender ?? ""}`;
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const loading = loadedKey !== requestKey;
   const [errorMessage, setErrorMessage] = useState("");
@@ -112,6 +119,7 @@ export default function RecommendedProductsView() {
         style: selectedStyle,
         palette_only: paletteOnly ? 1 : undefined,
         colour: colourFilter || undefined,
+        gender: gender ?? undefined,
       })
       .then((data) => {
         if (cancelled) return;
@@ -131,7 +139,7 @@ export default function RecommendedProductsView() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- toProduct only reads constants
-  }, [detectedSkinTone, undertone, selectedStyle, paletteOnly, colourFilter, requestKey]);
+  }, [detectedSkinTone, undertone, selectedStyle, paletteOnly, colourFilter, requestKey, gender]);
 
   const recommendedProducts = useMemo(() => {
     const search = searchText.trim().toLowerCase();
@@ -169,6 +177,15 @@ export default function RecommendedProductsView() {
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold font-sans mt-3">
                   <Sparkles className="w-3.5 h-3.5" />
                   Match Confidence: {searchParams.get("confidence")}%
+                </div>
+              )}
+
+              {genderLabel && (
+                <div
+                  data-testid="recommended-gender"
+                  className="ml-2 mt-3 inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-slate-200"
+                >
+                  {genderLabel} picks only
                 </div>
               )}
 
