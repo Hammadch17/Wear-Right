@@ -15,8 +15,6 @@ export type AdminPermission =
   | "catalog.manage"
   | "orders.view"
   | "orders.manage"
-  | "bookings.view"
-  | "bookings.manage"
   | "scans.view"
   | "team.manage";
 
@@ -106,7 +104,6 @@ export const adminApi = {
   dashboard: <T = unknown>() => apiGet<T>(`${A}/dashboard/`),
   products: <T = unknown>() => apiGet<T>(`${A}/products/?page_size=500`),
   orders: <T = unknown>() => apiGet<T>(`${A}/orders/`),
-  bookings: <T = unknown>() => apiGet<T>(`${A}/bookings/`),
   faceScans: <T = unknown>() => apiGet<T>(`${A}/face-scans/`),
 
   /** Creates (no id) or updates (id) a product. `formData` carries the optional image file. */
@@ -118,9 +115,6 @@ export const adminApi = {
     form.append("image", image);
     return apiSend<{ status: string; suggestion: ColourSuggestion }>("POST", `${A}/products/color-suggestion/`, form);
   },
-
-  updateBooking: (id: number, patch: { status: string }) => apiSend("PUT", `${A}/bookings/${id}/`, patch),
-  deleteBooking: (id: number) => apiSend("DELETE", `${A}/bookings/${id}/`),
 
   updateOrderStatus: (id: number, order_status: string) => apiSend("PATCH", `${A}/orders/${id}/status/`, { order_status }),
   deleteOrder: (id: number) => apiSend("DELETE", `${A}/orders/${id}/`),

@@ -112,3 +112,12 @@ test("5f. a Super Admin adds an Order Handler, who only sees what the role allow
   await page.getByTestId("member-row").filter({ hasText: email }).getByRole("button", { name: /remove/i }).click();
   await expect(page.getByTestId("member-row").filter({ hasText: email })).toHaveCount(0);
 });
+
+test("5g. Bookings is gone from the admin panel", async ({ page }) => {
+  await adminLogin(page, ADMIN.email, ADMIN.password, "/admin");
+  await expect(page.getByRole("button", { name: "Bookings", exact: true })).toHaveCount(0);
+
+  await page.goto("/admin/bookings");
+  await expect(page.getByText("This admin page does not exist.")).toBeVisible();
+  expect((await page.request.get("/api/admin/bookings/")).status()).toBe(404);
+});

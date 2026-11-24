@@ -280,15 +280,14 @@ Create additional accounts at `/register`. Staff-only screens live at `/admin`.
 | Tone rules | The recommender's colour rules and palettes. |
 | Users | The demo staff accounts above plus the demo customer. |
 | Orders | **Empty initially.** They appear when a customer checks out (or you create one through the API). |
-| Bookings | **Empty initially.** The booking APIs exist, but the storefront does not create bookings yet. |
 | Face scans | **Empty initially.** A signed-in scan or manual tone choice adds a record. |
 
 What the real admin screens can do:
 
-- **Dashboard:** totals for products, orders, bookings, scans, revenue/profit, low stock and status charts.
+- **Dashboard:** totals for products, orders, scans, revenue/profit, low stock and status charts.
 - **Products:** search, create/edit with image upload and live preview, request a dominant-colour suggestion, change price/stock/sizes, hide/show with the eye toggle, and delete with confirmation.
 - **Orders:** list/search orders, open details, and move an order through the allowed statuses (Pending → Confirmed → Shipped → Delivered, or cancel while Pending/Confirmed).
-- **Bookings and face scans:** read the records created by the app.
+- **Face scans:** read the records created by the app.
 - **Categories and styles:** create, rename and remove taxonomy values.
 
 The **Skin Tone Matrix**, **Outfit Rules**, **Team Members** and **Settings** tabs still show legacy static demo content. They are not backed by editable data yet. Django's own admin is also available at <http://127.0.0.1:8000/admin/> for staff users, but the Next.js `/admin` screen is the supported interface.

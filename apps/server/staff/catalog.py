@@ -7,8 +7,6 @@ PERMISSIONS = [
     ('catalog.manage', 'Catalog setup', 'Manage categories, styles and skin tone colour rules'),
     ('orders.view', 'Orders', 'See orders'),
     ('orders.manage', 'Orders', 'Change order status and delete orders'),
-    ('bookings.view', 'Bookings', 'See bookings'),
-    ('bookings.manage', 'Bookings', 'Update and delete bookings'),
     ('scans.view', 'Face scans', 'See face scan records'),
     ('team.manage', 'Team', 'Add, edit and remove team members and roles'),
 ]
@@ -26,7 +24,7 @@ DEFAULT_ROLES = [
     {
         'slug': 'manager', 'name': 'Manager', 'is_system': False,
         'permissions': ['dashboard.view', 'products.view', 'products.manage', 'catalog.manage', 'orders.view',
-                        'orders.manage', 'bookings.view', 'bookings.manage', 'scans.view'],
+                        'orders.manage', 'scans.view'],
         'description': 'Runs the shop day to day. Everything except the team.',
     },
     {
@@ -36,8 +34,8 @@ DEFAULT_ROLES = [
     },
     {
         'slug': 'order-handler', 'name': 'Order Handler', 'is_system': False,
-        'permissions': ['dashboard.view', 'products.view', 'orders.view', 'orders.manage', 'bookings.view', 'bookings.manage'],
-        'description': 'Processes orders and bookings.',
+        'permissions': ['dashboard.view', 'products.view', 'orders.view', 'orders.manage'],
+        'description': 'Processes orders.',
     },
 ]
 

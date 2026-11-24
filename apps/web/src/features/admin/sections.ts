@@ -9,7 +9,6 @@ export const ADMIN_SECTIONS = [
   { id: "outfitRules", path: "/admin/outfit-rules", label: "Outfit Rules", permission: "products.view" },
   { id: "mannequin", path: "/admin/mannequin", label: "Mannequin", permission: "products.view" },
   { id: "orders", path: "/admin/orders", label: "Orders", permission: "orders.view" },
-  { id: "bookings", path: "/admin/bookings", label: "Bookings", permission: "bookings.view" },
   { id: "faceScans", path: "/admin/face-scans", label: "Face Scans", permission: "scans.view" },
   { id: "team", path: "/admin/team", label: "Team & Roles", permission: "team.manage" },
   { id: "settings", path: "/admin/settings", label: "Settings", permission: null },

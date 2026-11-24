@@ -41,7 +41,7 @@ Domain apps in `apps/server`:
 | `catalog`     | Product, Category, Color, import + image pipeline                                          |
 | `scanner`     | FaceScanRecord, skin tone engine                                                           |
 | `recommender` | ToneColorRule (editable colour rules), ranker, look generation (engine in `recommender/engine/`) |
-| `orders`      | Cart, Order, OrderItem, Booking                                                            |
+| `orders`      | Cart, Order, OrderItem, Booking (shopper API only; the admin panel has no Bookings section)  |
 | `staff`       | AdminRole, AdminMember, `/api/admin/*` endpoints, admin-only JWT cookies, RBAC permissions  |
 
 Frontend (`apps/web`, sources under `src/`), same idea:

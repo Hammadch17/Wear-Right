@@ -54,7 +54,7 @@ def test_a_role_without_products_view_cannot_open_the_mannequin_page():
     # The seeded Order Handler deliberately has products.view (needed to read product
     # names on orders) so it CAN open this page read-only. A role with no product
     # permission at all is the real RBAC gate.
-    role, error = create_role(name="Bookings only", permissions=["bookings.view"])
+    role, error = create_role(name="Scans only", permissions=["scans.view"])
     assert error is None
     assert client_with_role(role.slug).get(URL).status_code == 403
 

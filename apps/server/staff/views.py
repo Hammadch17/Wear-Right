@@ -21,7 +21,7 @@ from catalog.views import (
 from core.csrf import ensure_csrf_cookie
 from orders.selectors import get_dashboard_stats, get_order
 from orders.services import cancel_order, delete_order
-from orders.views import BookingDetailAPIView, BookingListCreateAPIView, OrderDetailAPIView, OrderListCreateAPIView, OrderStatusAPIView
+from orders.views import OrderDetailAPIView, OrderListCreateAPIView, OrderStatusAPIView
 from recommender.views import ToneRuleDetailAPIView, ToneRuleListCreateAPIView
 from scanner.views import FaceScanRecordListAPIView
 
@@ -384,14 +384,6 @@ class AdminOrderDetail(AdminAPIMixin, OrderDetailAPIView):
 
 class AdminOrderStatus(AdminAPIMixin, OrderStatusAPIView):
     admin_permissions = {'PATCH': 'orders.manage'}
-
-
-class AdminBookingList(AdminAPIMixin, BookingListCreateAPIView):
-    admin_permissions = {'GET': 'bookings.view'}
-
-
-class AdminBookingDetail(AdminAPIMixin, BookingDetailAPIView):
-    admin_permissions = _perms('bookings')
 
 
 class AdminFaceScanList(AdminAPIMixin, FaceScanRecordListAPIView):

@@ -28,6 +28,8 @@ def test_admin_dashboard(staff_client):
     assert r.status_code == 200
     assert set(r.json()) == {"status", "dashboard"}
     assert "total_products" in r.json()["dashboard"]
+    assert "total_bookings" not in r.json()["dashboard"]
+    assert "booking_status_counts" not in r.json()["dashboard"]
 
 
 def test_scanner_analyze(staff_client):

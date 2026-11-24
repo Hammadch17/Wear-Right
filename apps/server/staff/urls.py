@@ -37,7 +37,5 @@ urlpatterns = [
     path('orders/', views.AdminOrderList.as_view(), name='api-admin-orders'),
     path('orders/<int:order_id>/', views.AdminOrderDetail.as_view(), name='api-admin-order-detail'),
     path('orders/<int:order_id>/status/', views.AdminOrderStatus.as_view(), name='api-admin-order-status'),
-    path('bookings/', views.AdminBookingList.as_view(), name='api-admin-bookings'),
-    path('bookings/<int:booking_id>/', views.AdminBookingDetail.as_view(), name='api-admin-booking-detail'),
     path('face-scans/', views.AdminFaceScanList.as_view(), name='api-admin-face-scans'),
 ]

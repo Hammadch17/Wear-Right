@@ -120,14 +120,14 @@ export default function HomeView() {
             variants={itemVariants}
             className="lg:col-span-7 relative flex items-start justify-end lg:-ml-12 lg:-mt-18"
           >
-            <div className="w-full aspect-[815/660] relative overflow-hidden group">
+            <div className="w-full aspect-[16/9] relative overflow-hidden group">
               {/* Soft gradient overlay to blend image left edge with page background */}
-              <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none" />
+              <div className="absolute left-0 top-0 bottom-0 w-10 sm:w-20 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none" />
               {/* Soft gradient overlay to blend image right edge with page background */}
-              <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 w-4 sm:w-8 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none" />
               <img
-                src="/brand/hero.png"
-                alt="Wear Right models styled with AI"
+                src="/brand/hero-new.png"
+                alt="Three men wearing white kurtas and shawls, styled by Wear Right"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-101"
               />
             </div>
