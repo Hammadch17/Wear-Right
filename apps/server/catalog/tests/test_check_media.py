@@ -3,6 +3,7 @@ import io
 import pytest
 from django.core.management import call_command
 
+from catalog.models import MannequinBase, MannequinLayer
 from core.tests.factories import ProductFactory
 
 pytestmark = pytest.mark.django_db
@@ -75,3 +76,26 @@ def test_fix_clears_missing_references_but_keeps_real_files(media_root):
     assert broken_kurta.mannequin_ready is False
     assert healthy.image.name == "products/kept.png"
     assert "Cleared 2 dead references." in out
+
+
+def test_missing_mannequin_images_are_reported_and_never_cleared():
+    base = MannequinBase.objects.create(gender="men", image="mannequin_alpha/base/gone.jpg")
+    layer = MannequinLayer.objects.create(
+        base=base,
+        product=ProductFactory(name="Layer Shirt"),
+        slot="top",
+        image="mannequin_alpha/layers/gone.png",
+        image_dark="mannequin_alpha/layers/gone-dark.png",
+    )
+
+    out, _ = _run(fix=True)
+
+    assert "Every product photo exists on disk." in out
+    assert "mannequin base men image: mannequin_alpha/base/gone.jpg" in out
+    assert f'layer {layer.pk} "Layer Shirt" image: mannequin_alpha/layers/gone.png' in out
+    assert f'layer {layer.pk} "Layer Shirt" image_dark: mannequin_alpha/layers/gone-dark.png' in out
+    assert "3 missing mannequin image(s)." in out
+    base.refresh_from_db()
+    layer.refresh_from_db()
+    assert base.image.name == "mannequin_alpha/base/gone.jpg"
+    assert layer.image.name == "mannequin_alpha/layers/gone.png"

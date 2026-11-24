@@ -146,7 +146,7 @@ The browser only talks to Next.js on port 3000; Next rewrites `/api` and `/media
 
 ## Build plan
 
-8 build weeks plus 2 buffer weeks, all on one laptop, no deployment. Hammad owns AI and backend, Tayyab owns frontend and admin, Hammad's team owns data, labeling, the user study and the thesis. Phase-by-phase steps, owners, gates and the API contract are in Phase playbook.
+8 build weeks plus 2 buffer weeks, all on one laptop, no deployment. Junaid owns AI and backend, Tayyab owns frontend and admin, Hammad's team owns data, labeling, the user study and the thesis. Phase-by-phase steps, owners, gates and the API contract are in Phase playbook.
 
 ## Risks and open questions
 
@@ -172,7 +172,7 @@ The biggest risk is not code: it is the FYP doc's Chapter 8 and the product phot
 
 ## Sources
 
-- Repo: `Wear-Right` on Hammad's machine, `main` branch, read Oct 7, 2026 (`apps/server`, `apps/client`, env files with values masked)
+- Repo: `Wear-Right` on Junaid's machine, `main` branch, read Oct 7, 2026 (`apps/server`, `apps/client`, env files with values masked)
 - FYP doc: "FYP final 1st june.pdf" in the Wear Right FYP UOL project
 - [Next.js blog (16.4, Oct 6, 2026)](https://nextjs.org/blog)
 - [dj-rest-auth: JWT in httpOnly cookies](https://dj-rest-auth.readthedocs.io/en/latest/guides/jwt-cookies/)

@@ -14,7 +14,7 @@ The outfit board (plan 08) stays the default everywhere. The mannequin is an ext
 
 ## Inputs (made by the team, see the kit's `GUIDE.md`)
 
-`/home/user/Projects/Wear-Right/extras/mannequin-alpha-kit/` (`extras/` is gitignored, so a worktree does not have it; the path is passed to the commands, never hard-coded):
+`/home/jb/Projects/Wear-Right/extras/mannequin-alpha-kit/` (`extras/` is gitignored, so a worktree does not have it; the path is passed to the commands, never hard-coded):
 
 ```
 base/men.png        AI-generated base model, portrait 3:4, white tee, grey trousers, white sneakers
@@ -120,7 +120,7 @@ Every endpoint gets pytest tests for the status code and the response shape, plu
 
 ## Part E: run it on the pilot and report
 
-1. `make alpha-import SOURCE=/home/user/Projects/Wear-Right/extras/mannequin-alpha-kit` and paste the real table.
+1. `make alpha-import SOURCE=/home/jb/Projects/Wear-Right/extras/mannequin-alpha-kit` and paste the real table.
 2. `make alpha-preview` and look at every composite. Write `docs/phases/phase-6-screens/alpha/REVIEW.md` with one line per layer (good / visible seam / wrong item / rejected) and one per composite. Be blunt.
 3. Approve in the admin only the layers and looks that look right. Then check by hand in the browser: open each alpha product, open its look on the mannequin tab, swap the shirt, trousers, shoes and watch, check that a non-alpha product has no mannequin tab, and check a phone-width viewport.
 4. Docs: `docs/STATUS.md` (decision: alpha mannequin, how it works, thresholds as starting values, open issues), `docs/DEMO.md` (a demo step that uses a hero look first, then one live swap), `docs/phases/phase-6.md` (add the approaches-tried table above and the thesis wording below), and `docs/plans/README.md`.

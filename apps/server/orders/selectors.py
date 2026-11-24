@@ -34,7 +34,6 @@ def get_dashboard_stats():
 
     products = Product.objects.all()
     orders = Order.objects.all()
-    bookings = Booking.objects.all()
     face_scans = FaceScanRecord.objects.all()
 
     # Cancelled orders never earned anything, so they stay out of revenue and profit.
@@ -60,15 +59,9 @@ def get_dashboard_stats():
         for name, _ in Order.ORDER_STATUS_CHOICES
     }
 
-    booking_status_counts = {
-        name: bookings.filter(status=name).count()
-        for name, _ in Booking.BOOKING_STATUS_CHOICES
-    }
-
     return {
         "total_products": products.count(),
         "total_orders": orders.count(),
-        "total_bookings": bookings.count(),
         "total_face_scans": face_scans.count(),
         "monthly_revenue": monthly_revenue,
         "monthly_profit": monthly_profit,
@@ -76,5 +69,4 @@ def get_dashboard_stats():
         "style_counts": style_counts,
         "skin_tone_counts": skin_tone_counts,
         "order_status_counts": order_status_counts,
-        "booking_status_counts": booking_status_counts,
     }

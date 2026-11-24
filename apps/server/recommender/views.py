@@ -58,7 +58,7 @@ from core.permissions import IsStaffOrReadOnly
 from .models import ToneColorRule
 from .selectors import get_palette_rules
 from .serializers import ToneColorRuleSerializer
-from .services import build_look, palette_for, top_picks
+from .services import build_look, palette_for, tone_picks, top_picks
 from .adapter import build_profile
 
 
@@ -119,6 +119,44 @@ class CompleteLookAPIView(APIView):
             "complete": look["complete"], "missing": look["missing"],
             "anchor_slot": look.get("anchor_slot", ""), "anchor_kind": look.get("anchor_kind", ""),
             "context": _context(profile), "anchor": _product_json(product, request), "slots": slots,
+        })
+
+
+class TonePicksAPIView(APIView):
+    """Two products per group for one gender and skin tone, plus any groups that are short."""
+    permission_classes = [_AllowAny]
+    TONES = {'fair': 'Fair', 'medium': 'Medium', 'dark': 'Dark'}
+    UNDERTONES = {'warm', 'cool', 'neutral'}
+
+    def get(self, request):
+        tone = self.TONES.get((request.query_params.get('tone') or '').strip().lower())
+        gender = (request.query_params.get('gender') or '').strip().lower()
+        undertone = (request.query_params.get('undertone') or '').strip().lower()
+        if tone is None:
+            return Response({'status': 'error', 'message': 'tone must be fair, medium or dark'}, status=status.HTTP_400_BAD_REQUEST)
+        if gender not in ('men', 'women'):
+            return Response({'status': 'error', 'message': 'gender must be men or women'}, status=status.HTTP_400_BAD_REQUEST)
+        if undertone and undertone not in self.UNDERTONES:
+            return Response({'status': 'error', 'message': 'undertone must be warm, cool or neutral'}, status=status.HTTP_400_BAD_REQUEST)
+
+        _, _, groups = tone_picks(tone, gender, undertone)
+        body = [
+            {
+                'key': group['key'],
+                'label': group['label'],
+                'slots': group['slots'],
+                'short': group['short'],
+                'items': [_product_json(row['product'], request) for row in group['items']],
+            }
+            for group in groups
+        ]
+        return Response({
+            'status': 'success',
+            'tone': tone,
+            'gender': gender,
+            'undertone': undertone,
+            'groups': body,
+            'short_groups': [group['key'] for group in groups if group['short']],
         })
 
 

@@ -94,6 +94,22 @@ def test_role_crud(boss):
     assert boss.delete(f"/api/admin/roles/{role['id']}/").status_code == 200
 
 
+def test_booking_permissions_are_gone(boss):
+    """No role can hold a booking permission now that the admin section is removed."""
+    body = boss.get('/api/admin/roles/').json()
+    assert all(not item['key'].startswith('bookings.') for item in body['permissions'])
+    assert all(
+        not any(key.startswith('bookings.') for key in role['permissions'])
+        for role in body['roles']
+    )
+
+    r = boss.post('/api/admin/roles/', {
+        'name': 'Booking role', 'description': 'Should not exist', 'permissions': ['bookings.view'],
+    }, format='json')
+    assert r.status_code == 400
+    assert not AdminRole.objects.filter(name='Booking role').exists()
+
+
 def test_system_role_and_roles_in_use_are_protected(boss):
     super_admin = AdminRole.objects.get(slug='super-admin')
     assert boss.patch(f'/api/admin/roles/{super_admin.id}/', {'permissions': []}, format='json').status_code == 400

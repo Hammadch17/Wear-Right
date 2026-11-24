@@ -27,4 +27,11 @@ describe("recommenderApi", () => {
     await recommenderApi.palette({ depth: "Fair", undertone: "neutral" });
     expect(apiGet).toHaveBeenCalledWith("/api/tone-rules/palette/?depth=Fair&undertone=neutral");
   });
+
+  it("asks for tone picks with the gender and optional undertone", async () => {
+    await recommenderApi.tonePicks({ tone: "fair", gender: "women", undertone: "warm" });
+    expect(apiGet).toHaveBeenCalledWith("/api/recommendations/tone-picks/?tone=fair&gender=women&undertone=warm");
+    await recommenderApi.tonePicks({ tone: "dark", gender: "men" });
+    expect(apiGet).toHaveBeenLastCalledWith("/api/recommendations/tone-picks/?tone=dark&gender=men");
+  });
 });

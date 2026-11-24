@@ -29,10 +29,8 @@ def test_anonymous_gets_401_everywhere():
 @pytest.mark.parametrize('slug, url, expected', [
     ('inventory-staff', '/api/admin/products/', 200),
     ('inventory-staff', '/api/admin/orders/', 403),
-    ('inventory-staff', '/api/admin/bookings/', 403),
     ('inventory-staff', '/api/admin/members/', 403),
     ('order-handler', '/api/admin/orders/', 200),
-    ('order-handler', '/api/admin/bookings/', 200),
     ('order-handler', '/api/admin/face-scans/', 403),
     ('manager', '/api/admin/face-scans/', 200),
     ('manager', '/api/admin/roles/', 403),
@@ -41,6 +39,15 @@ def test_anonymous_gets_401_everywhere():
 ])
 def test_read_access_follows_the_role(slug, url, expected):
     assert client_with_role(slug).get(url).status_code == expected
+
+
+@pytest.mark.parametrize('slug', ['super-admin', 'manager', 'inventory-staff', 'order-handler'])
+def test_admin_booking_endpoints_are_gone(slug):
+    """The panel no longer has Bookings; every role now gets the normal 404, never a 403 or data."""
+    client = client_with_role(slug)
+    assert client.get('/api/admin/bookings/').status_code == 404
+    assert client.post('/api/admin/bookings/', {}, format='json').status_code == 404
+    assert client.get('/api/admin/bookings/1/').status_code == 404
 
 
 def test_order_handler_can_read_products_but_not_change_them():

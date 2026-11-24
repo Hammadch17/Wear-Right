@@ -116,7 +116,7 @@ Report: Step 0 findings, files changed per commit, real make test and build outp
 ## Prompt 09: AR try-on
 
 ```
-You are working on Wear Right (FYP). Read CLAUDE.md, docs/STATUS.md and /home/user/Projects/Wear-Right/docs/plans/07-ar-try-on.md. Do only plan 07. No image generation and no cloud GPU: everything runs in the browser with MediaPipe Pose Landmarker on the team laptop (Quadro T1000 4 GB, i7-9850H).
+You are working on Wear Right (FYP). Read CLAUDE.md, docs/STATUS.md and /home/jb/Projects/Wear-Right/docs/plans/07-ar-try-on.md. Do only plan 07. No image generation and no cloud GPU: everything runs in the browser with MediaPipe Pose Landmarker on the team laptop (Quadro T1000 4 GB, i7-9850H).
 
 Order, one commit each, tests in the same commit:
 1. Backend data: Product.tryon_anchors (JSON) + tryon_ready (bool) + migration; catalog/engine/tryon_anchors.py (pure, numpy) with the heuristics in the plan; called from prepare_mannequin_asset; `manage.py compute_tryon_anchors`; serializer exposes the fields, PUT validates anchors (staff only). pytest on synthetic masks.
@@ -143,13 +143,13 @@ Report: files per commit, real test/build output, how many demo products are try
 ## Prompt 11: test the cloud try-on from the Gemini package
 
 ```
-You are working on Wear Right (FYP). Read /home/user/Projects/Wear-Right/docs/plans/09-cloud-tryon-test.md. Do only "The test" section. Do not change apps/server or apps/web and do not copy the package into the app.
+You are working on Wear Right (FYP). Read /home/jb/Projects/Wear-Right/docs/plans/09-cloud-tryon-test.md. Do only "The test" section. Do not change apps/server or apps/web and do not copy the package into the app.
 
-The package is in /home/user/Projects/Wear-Right/apps/web/wear_right_tryon_upgrade/. Its cached images and HERO_LOOKS are not real outputs; ignore them. The only thing under test is calling FASHN VTON v1.5 (and CatVTON as fallback) on Hugging Face Spaces with gradio_client, on our real product photos.
+The package is in /home/jb/Projects/Wear-Right/apps/web/wear_right_tryon_upgrade/. Its cached images and HERO_LOOKS are not real outputs; ignore them. The only thing under test is calling FASHN VTON v1.5 (and CatVTON as fallback) on Hugging Face Spaces with gradio_client, on our real product photos.
 
 Steps 1 to 6 exactly as the plan says. Ask me for an HF_TOKEN if none is set (a free Hugging Face account token, read access). Stop as soon as the daily quota message appears and report how many renders you got.
 
-Commit only apps/tryon_test/REPORT.md and the output images, plus a .gitignore for the venv. Never write into /home/user/Projects/Wear-Right/docs/plans/ (that folder is the lead's; copy from it, never back to it).
+Commit only apps/tryon_test/REPORT.md and the output images, plus a .gitignore for the venv. Never write into /home/jb/Projects/Wear-Right/docs/plans/ (that folder is the lead's; copy from it, never back to it).
 
 Report: view_api output, corrected call code, the results table, the images side by side, and your honest verdict.
 ```
@@ -159,7 +159,7 @@ Report: view_api output, corrected call code, the results table, the images side
 ## Prompt 12: Mannequin (alpha) for curated products
 
 ```
-You are working on Wear Right (FYP). Copy /home/user/Projects/Wear-Right/docs/plans/ into this worktree's docs/plans/ (never the other way round). Read CLAUDE.md, docs/STATUS.md, docs/plans/08-outfit-board-and-media.md (what exists now), docs/plans/10-alpha-mannequin.md and, if present, apps/tryon_test/REPORT.md. Do only plan 10.
+You are working on Wear Right (FYP). Copy /home/jb/Projects/Wear-Right/docs/plans/ into this worktree's docs/plans/ (never the other way round). Read CLAUDE.md, docs/STATUS.md, docs/plans/08-outfit-board-and-media.md (what exists now), docs/plans/10-alpha-mannequin.md and, if present, apps/tryon_test/REPORT.md. Do only plan 10.
 
 Order, one commit each, tests in the same commit:
 1. tools/alpha_mannequin/: PROMPT.md (the fixed prompt), extract_layer.py (cloth mask x changed pixels x slot region, clean-up, alignment check), render_hf.py (only if plan 09's report says the HF route works; quota-aware, resumable). pytest on synthetic pairs.
@@ -179,7 +179,7 @@ Report: commits, real test/build output, the product list, how each layer was ma
 ## Prompt 08: skin tone, basic
 
 ```
-You are working on Wear Right (FYP). Read CLAUDE.md, docs/STATUS.md and /home/user/Projects/Wear-Right/docs/plans/06-skin-tone-basic.md. Do only plan 06. Do not change the skin tone algorithm in scanner/engine beyond the quality gate.
+You are working on Wear Right (FYP). Read CLAUDE.md, docs/STATUS.md and /home/jb/Projects/Wear-Right/docs/plans/06-skin-tone-basic.md. Do only plan 06. Do not change the skin tone algorithm in scanner/engine beyond the quality gate.
 
 Tasks 1 to 3, one commit each, with tests (quality gate thresholds unit-tested on synthetic images; the "Not right? Choose mine" flow saves the confirmed value). Task 4: only if data/eval/labels.csv and photos exist; otherwise write in STATUS.md that the evaluation is waiting for the team's labelled selfies, and stop.
 
@@ -203,12 +203,12 @@ Note: prompt numbers are the order they were written, not plan numbers (Prompt 0
 Run it in two sessions. Session 1 is Part A only.
 
 ```
-You are working on Wear Right (FYP). Read CLAUDE.md, docs/STATUS.md, docs/plans/README.md, docs/plans/08-outfit-board-and-media.md (what exists now) and docs/plans/11-mannequin-alpha-pilot.md. Also read /home/user/Projects/Wear-Right/extras/mannequin-alpha-kit/GUIDE.md (absolute path: extras/ is gitignored, so a worktree does not have it) so you know how the renders are made. Do only Part A of plan 11.
+You are working on Wear Right (FYP). Read CLAUDE.md, docs/STATUS.md, docs/plans/README.md, docs/plans/08-outfit-board-and-media.md (what exists now) and docs/plans/11-mannequin-alpha-pilot.md. Also read /home/jb/Projects/Wear-Right/extras/mannequin-alpha-kit/GUIDE.md (absolute path: extras/ is gitignored, so a worktree does not have it) so you know how the renders are made. Do only Part A of plan 11.
 
 1. catalog/engine/alpha_layers.py (pure, no Django): normalise, default_regions, align (ORB+RANSAC, ECC refine, slot masked out), pose_check, extract_layer (colour difference x slot region x u2net_cloth_seg masks, clean-up, feather), composite. Thresholds are constants at the top, commented as starting values.
 2. Commands alpha_regions and alpha_check, exactly as in the plan.
 3. The synthetic pytest tests from the plan, plus one @pytest.mark.models test for the cloth model (add it to download_models.py if missing).
-4. Run the gate: alpha_regions --preview on /home/user/Projects/Wear-Right/extras/mannequin-alpha-kit/base/men.png, then alpha_check on renders/T1_20024.png (slot top) and renders/B1_31562.png (slot bottom). Save outputs to docs/phases/phase-6-screens/alpha/gate/.
+4. Run the gate: alpha_regions --preview on /home/jb/Projects/Wear-Right/extras/mannequin-alpha-kit/base/men.png, then alpha_check on renders/T1_20024.png (slot top) and renders/B1_31562.png (slot bottom). Save outputs to docs/phases/phase-6-screens/alpha/gate/.
 
 Run `make test`. No Playwright. One commit for code + tests, one for the gate outputs.
 
@@ -224,7 +224,7 @@ Order, one commit each, tests in the same commit:
 1. Part B: MannequinBase / MannequinLayer / MannequinLook + migration, services, import_alpha_mannequin and alpha_preview commands, Makefile targets.
 2. Part C: the resolve endpoint, alpha_mannequin on ProductSerializer (Exists annotation), ?mannequin=alpha, the admin endpoints with RBAC. pytest for every endpoint.
 3. Part D: lib/api.ts functions, useAlphaMannequin, AlphaMannequin.tsx, tabs in CompleteOutfitView and OutfitPreviewModal, the ProductDetailView button, the ShopView badge and filter, the admin section. vitest.
-4. Part E: make alpha-import SOURCE=/home/user/Projects/Wear-Right/extras/mannequin-alpha-kit, make alpha-preview, REVIEW.md, approve the good ones in the admin, hand checks in the browser, docs.
+4. Part E: make alpha-import SOURCE=/home/jb/Projects/Wear-Right/extras/mannequin-alpha-kit, make alpha-preview, REVIEW.md, approve the good ones in the admin, hand checks in the browser, docs.
 
 Testing: `make test` and `npm --prefix apps/web run build`. No Playwright.
 

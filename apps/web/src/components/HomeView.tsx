@@ -73,7 +73,7 @@ export default function HomeView() {
     >
       {/* Hero Header Area */}
       <section className="relative w-full overflow-hidden pt-0 pb-16 md:pb-20">
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start pt-12 md:pt-16">
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start lg:items-stretch pt-12 md:pt-16">
           {/* Hero Left Content Column */}
           <motion.div
             variants={itemVariants}
@@ -118,16 +118,16 @@ export default function HomeView() {
           {/* Hero Right Visual Column */}
           <motion.div
             variants={itemVariants}
-            className="lg:col-span-7 relative flex items-start justify-end lg:-ml-12 lg:-mt-18"
+            className="lg:col-span-7 relative flex items-stretch justify-end lg:-ml-12 lg:-mt-18"
           >
-            <div className="w-full aspect-[815/660] relative overflow-hidden group">
+            <div className="w-full aspect-[16/9] relative overflow-hidden group lg:aspect-auto lg:h-full">
               {/* Soft gradient overlay to blend image left edge with page background */}
-              <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none" />
+              <div className="absolute left-0 top-0 bottom-0 w-10 sm:w-20 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none" />
               {/* Soft gradient overlay to blend image right edge with page background */}
-              <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 w-4 sm:w-8 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none" />
               <img
-                src="/brand/hero.png"
-                alt="Wear Right models styled with AI"
+                src="/brand/hero-new.png"
+                alt="Three men wearing white kurtas and shawls, styled by Wear Right"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-101"
               />
             </div>

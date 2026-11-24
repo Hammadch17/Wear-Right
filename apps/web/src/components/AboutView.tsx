@@ -23,7 +23,7 @@ export default function AboutView() {
 
         <div className="max-w-7xl mx-auto px-6 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center pt-2 md:pt-4">
           {/* Hero Left Content Column */}
-          <div className="lg:col-span-7 flex flex-col justify-start text-left">
+          <div className="lg:col-span-5 flex flex-col justify-start text-left">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-100 w-max mb-6 shadow-sm">
               <Sparkles className="w-3.5 h-3.5 text-brand-gold animate-pulse" />
               <span className="text-[10px] uppercase tracking-widest text-blue-700 font-extrabold font-sans">
@@ -62,16 +62,16 @@ export default function AboutView() {
           </div>
 
           {/* Hero Right Visual Column */}
-          <div className="lg:col-span-5 relative flex items-center justify-center">
-            <div className="w-full max-w-[380px] aspect-[3/4] bg-white border-2 border-brand-gold/15 shadow-[0_20px_50px_-12px_rgba(35,33,29,0.18)] rounded-[2rem] overflow-hidden group select-none transition-all duration-500 hover:border-brand-gold/30">
+          <div className="lg:col-span-7 relative flex items-center justify-center">
+            <div className="w-full aspect-[16/9] bg-white border-2 border-brand-gold/15 shadow-[0_20px_50px_-12px_rgba(35,33,29,0.18)] rounded-[2rem] overflow-hidden group select-none transition-all duration-500 hover:border-brand-gold/30">
               <div className="absolute inset-0 bg-slate-950/5 pointer-events-none" />
               <img
-                src="/brand/about-hero.jpg"
-                alt="About Wear Right fashion model"
+                src="/brand/hero.png"
+                alt="Wear Right team wearing traditional black and cream waistcoats"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-103"
               />
               {/* Overlay logo badge */}
-              <div className="absolute bottom-6 right-6 bg-white/90 backdrop-blur-md border border-slate-100 rounded-2xl p-4 shadow-xl max-w-[200px]">
+              <div className="absolute bottom-3 right-3 sm:bottom-6 sm:right-6 bg-white/90 backdrop-blur-md border border-slate-100 rounded-2xl p-3 sm:p-4 shadow-xl max-w-[170px] sm:max-w-[200px]">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shadow-inner">
                     <img
@@ -226,9 +226,11 @@ export default function AboutView() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Member 1: Hammad Ahmad */}
             <div className="flex flex-col items-center text-center p-8 bg-white rounded-2xl border border-blue-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.02]">
-              <div className="w-20 h-20 rounded-full bg-blue-600 text-white border-4 border-blue-50 flex items-center justify-center font-display font-bold text-2xl mb-6 shadow-md shadow-blue-900/10">
-                HA
-              </div>
+              <img
+                src="/team/hammad-ahmad.jpg"
+                alt="Hammad Ahmad"
+                className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover object-top border-4 border-blue-50 shadow-md shadow-blue-900/10 mb-6"
+              />
               <h3 className="font-serif font-normal text-brand-dark text-lg mb-1">
                 Hammad Ahmad
               </h3>
@@ -243,9 +245,11 @@ export default function AboutView() {
 
             {/* Member 2: Ali Tariq */}
             <div className="flex flex-col items-center text-center p-8 bg-white rounded-2xl border border-blue-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.02]">
-              <div className="w-20 h-20 rounded-full bg-blue-700 text-white border-4 border-blue-50 flex items-center justify-center font-display font-bold text-2xl mb-6 shadow-md shadow-blue-900/10">
-                AT
-              </div>
+              <img
+                src="/team/ali-tariq.jpg"
+                alt="Ali Tariq"
+                className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover object-top border-4 border-blue-50 shadow-md shadow-blue-900/10 mb-6"
+              />
               <h3 className="font-serif font-normal text-brand-dark text-lg mb-1">
                 Ali Tariq
               </h3>
@@ -260,9 +264,11 @@ export default function AboutView() {
 
             {/* Member 3: Sameer Ahmad */}
             <div className="flex flex-col items-center text-center p-8 bg-white rounded-2xl border border-blue-200/60 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.02]">
-              <div className="w-20 h-20 rounded-full bg-blue-800 text-white border-4 border-blue-50 flex items-center justify-center font-display font-bold text-2xl mb-6 shadow-md shadow-blue-900/10">
-                SA
-              </div>
+              <img
+                src="/team/sameer-ahmad.jpg"
+                alt="Sameer Ahmad"
+                className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover object-top border-4 border-blue-50 shadow-md shadow-blue-900/10 mb-6"
+              />
               <h3 className="font-serif font-normal text-brand-dark text-lg mb-1">
                 Sameer Ahmad
               </h3>

@@ -27,3 +27,11 @@ def get_palette_rules(depth, undertone):
 def get_shoppable_products():
     """Products a shopper could buy now: active and in stock (drafts and out-of-stock items are left out)."""
     return Product.objects.filter(status='Active', stock_quantity__gt=0)
+
+
+def get_tone_products(tone, gender):
+    """Shoppable products for one gender and skin tone, with unisex and All-tone products included."""
+    return get_shoppable_products().filter(
+        gender__in=(gender, 'unisex'),
+        compatible_skin_tone__in=('All', tone),
+    )

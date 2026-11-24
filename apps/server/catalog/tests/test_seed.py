@@ -48,3 +48,35 @@ def test_seed_creates_no_logins_without_a_password_outside_debug(settings, tmp_p
     call_command("seed_products")
 
     assert not User.objects.filter(username__in=["admin", "admin@wearright.com", "demo@wearright.local"]).exists()
+
+
+def test_seed_warns_when_product_photos_are_missing(settings, tmp_path, capsys):
+    settings.MEDIA_ROOT = tmp_path
+    settings.DEBUG = False
+    call_command("seed_products")
+    capsys.readouterr()
+
+    from core.tests.factories import ProductFactory
+
+    ProductFactory(name="Missing photo", image="products/not-there.png")
+    call_command("seed_products")
+
+    output = capsys.readouterr().out
+    assert "1 product photo(s) are missing" in output
+    assert str(tmp_path) in output
+
+
+def test_seed_restores_a_photo_saved_with_djangos_random_suffix(settings, tmp_path, capsys):
+    settings.MEDIA_ROOT = tmp_path
+    settings.DEBUG = False
+
+    from core.tests.factories import ProductFactory
+
+    stored = "products/olive_green_trousers_zvL7o8m.png"
+    ProductFactory(name="Olive Suit Trousers", image=stored)
+    call_command("seed_products")
+
+    output = capsys.readouterr().out
+    assert (tmp_path / stored).exists()
+    assert "Restored 1 product photo(s) from seed_media." in output
+    assert "product photo(s) are missing" not in output

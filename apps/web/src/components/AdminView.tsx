@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   Package,
   ShoppingCart,
-  CalendarCheck,
   ScanFace,
   Search,
   Plus,
@@ -50,7 +49,6 @@ import { notify } from "@/lib/notify";
 type DashboardData = {
   total_products: number;
   total_orders: number;
-  total_bookings: number;
   total_face_scans: number;
   monthly_revenue: number;
   monthly_profit: number;
@@ -160,18 +158,6 @@ function orderLines(order: Order): OrderLine[] {
     },
   ];
 }
-
-type Booking = {
-  id: number;
-  customer_name: string;
-  customer_email?: string;
-  customer_phone?: string;
-  product_name?: string;
-  booking_type: string;
-  booking_date: string;
-  status: string;
-  created_at: string;
-};
 
 type FaceScanRecord = {
   id: number;
@@ -306,7 +292,6 @@ const SECTION_ICONS: Record<AdminSectionId, React.ComponentType<{ className?: st
   outfitRules: Sparkles,
   mannequin: PersonStanding,
   orders: ShoppingCart,
-  bookings: CalendarCheck,
   faceScans: ScanFace,
   team: Users,
   settings: Settings,
@@ -377,7 +362,6 @@ export default function AdminView() {
 
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const selectedOrder = orders.find((order) => order.id === selectedOrderId) ?? null;
-  const [bookings, setBookings] = useState<Booking[]>([]);
   const [faceScans, setFaceScans] = useState<FaceScanRecord[]>([]);
 
   const [searchVal, setSearchVal] = useState("");
@@ -393,7 +377,6 @@ export default function AdminView() {
   const canProducts = can("products.view");
   const manageProducts = can("products.manage");
   const manageOrders = can("orders.manage");
-  const manageBookings = can("bookings.manage");
 
   const fetchAllData = async () => {
     // Only ask for what this role may see, so a limited role never triggers 403s.
@@ -405,7 +388,6 @@ export default function AdminView() {
       tasks.push(adminApi.styles().then((d) => setStyleRows(d.styles)));
     }
     if (can("orders.view")) tasks.push(adminApi.orders<{ orders?: Order[] }>().then((d) => setOrders(d.orders || [])));
-    if (can("bookings.view")) tasks.push(adminApi.bookings<{ bookings?: Booking[] }>().then((d) => setBookings(d.bookings || [])));
     if (can("scans.view")) {
       tasks.push(adminApi.faceScans<{ face_scan_records?: FaceScanRecord[] }>().then((d) => setFaceScans(d.face_scan_records || [])));
     }
@@ -598,30 +580,6 @@ export default function AdminView() {
     } catch (error) {
       console.error(error);
       notify(errorText(error, "Could not delete. Please try again."), "error");
-    }
-  };
-
-  const updateBookingStatus = async (bookingId: number, newStatus: string) => {
-    try {
-      await adminApi.updateBooking(bookingId, { status: newStatus });
-      notify(`Booking ${newStatus.toLowerCase()}.`, "success");
-      await loadAllData();
-    } catch (error) {
-      console.error(error);
-      notify(errorText(error, "Could not update the booking status. Please try again."), "error");
-    }
-  };
-
-  const deleteBooking = async (bookingId: number) => {
-    if (!window.confirm(`Delete booking #${bookingId}?`)) return;
-
-    try {
-      await adminApi.deleteBooking(bookingId);
-      notify("Booking deleted.");
-      await loadAllData();
-    } catch (error) {
-      console.error(error);
-      notify(errorText(error, "Could not delete the booking. Please try again."), "error");
     }
   };
 
@@ -866,14 +824,7 @@ export default function AdminView() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <MetricCard
-                  title="Total Bookings"
-                  value={dashboard?.total_bookings || 0}
-                  icon={<CalendarCheck className="w-5 h-5" />}
-                  note="Trial / consultation"
-                />
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <MetricCard
                   title="Face Scans"
                   value={dashboard?.total_face_scans || 0}
@@ -1368,104 +1319,6 @@ export default function AdminView() {
                 </section>
               )}
             </>
-          )}
-
-          {allowed && activeTab === "bookings" && (
-            <DataPanel title="Bookings">
-              <table className="w-full min-w-[1100px] text-sm">
-                <thead className="bg-cream-base border-b border-slate-100">
-                  <tr className="text-[11px] uppercase tracking-widest text-slate-400 font-black">
-                    <th className="p-4 text-left">Booking ID</th>
-                    <th className="p-4 text-left">Customer</th>
-                    <th className="p-4 text-left">Product</th>
-                    <th className="p-4 text-left">Type</th>
-                    <th className="p-4 text-left">Date</th>
-                    <th className="p-4 text-left">Status</th>
-                    <th className="p-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-slate-100">
-                  {bookings.map((booking) => (
-                    <tr key={booking.id}>
-                      <td className="p-4 font-black text-sage-green">
-                        #{booking.id}
-                      </td>
-
-                      <td className="p-4">
-                        <p className="font-black text-brand-dark">
-                          {booking.customer_name}
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          {booking.customer_phone}
-                        </p>
-                      </td>
-
-                      <td className="p-4 font-bold text-slate-700">
-                        {booking.product_name || "N/A"}
-                      </td>
-
-                      <td className="p-4 font-bold text-slate-600">
-                        {booking.booking_type}
-                      </td>
-
-                      <td className="p-4 font-bold text-slate-600">
-                        {new Date(booking.booking_date).toLocaleDateString()}
-                      </td>
-
-                      <td className="p-4">
-                        <StatusBadge status={booking.status} />
-                      </td>
-
-                      <td className="p-4 w-[320px]">
-                        {manageBookings ? (
-                          <div className="flex justify-end items-center gap-2 flex-nowrap whitespace-nowrap">
-                            {booking.status === "Pending" && (
-                              <button
-                                onClick={() => updateBookingStatus(booking.id, "Confirmed")}
-                                className="px-3 py-2 rounded-lg bg-sage-green/10 text-sage-green text-xs font-black hover:bg-sage-green/20"
-                              >
-                                Confirm
-                              </button>
-                            )}
-                            {(booking.status === "Pending" || booking.status === "Confirmed") && (
-                              <>
-                                <button
-                                  onClick={() => updateBookingStatus(booking.id, "Completed")}
-                                  className="px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-black hover:bg-emerald-100"
-                                >
-                                  Complete
-                                </button>
-                                <button
-                                  onClick={() => updateBookingStatus(booking.id, "Cancelled")}
-                                  className="px-3 py-2 rounded-lg bg-amber-50 text-amber-700 text-xs font-black hover:bg-amber-100"
-                                >
-                                  Cancel
-                                </button>
-                              </>
-                            )}
-                            <button
-                              onClick={() => deleteBooking(booking.id)}
-                              className="px-3 py-2 rounded-lg bg-red-50 text-red-700 text-xs font-black hover:bg-red-100"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        ) : (
-                          <p className="text-right text-xs text-slate-400 font-semibold">View only</p>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {bookings.length === 0 && (
-                <div className="p-10 text-center text-slate-400 font-bold">
-                  No bookings found.
-                </div>
-              )}
-            </DataPanel>
           )}
 
           {allowed && activeTab === "faceScans" && (

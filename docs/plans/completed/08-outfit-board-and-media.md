@@ -36,7 +36,7 @@ honest visual for it — no generated bodies, no live body tracking, no broken p
 ## Part C — local media storage done properly
 
 - `MEDIA_ROOT` now comes from the environment (documented in `apps/server/.env.example`) and should
-  point **outside the repo** (e.g. `/home/user/wear-right-data/media`), so uploads survive worktrees,
+  point **outside the repo** (e.g. `/home/jb/wear-right-data/media`), so uploads survive worktrees,
   backups and reinstalls and every worktree sees the same files.
 - Django serves `/media/` itself while `SERVE_MEDIA=True` — independent of `DEBUG`, so the production
   demo build (`DEBUG=False`) shows photos. `static()` only served with `DEBUG=True`, which hid images

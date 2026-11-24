@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     CompleteLookAPIView, CuratedRecommendationAPIView, OutfitGenerationAPIView, PaletteAPIView,
-    ToneRuleDetailAPIView, ToneRuleListCreateAPIView, TopPicksAPIView,
+    TonePicksAPIView, ToneRuleDetailAPIView, ToneRuleListCreateAPIView, TopPicksAPIView,
 )
 
 urlpatterns = [
@@ -9,6 +9,7 @@ urlpatterns = [
     path('outfit/generate/', OutfitGenerationAPIView.as_view(), name='api-outfit-generate'),
     path('recommendations/', TopPicksAPIView.as_view(), name='api-recommendations'),
     path('recommendations/top/', TopPicksAPIView.as_view(), name='api-top-picks'),
+    path('recommendations/tone-picks/', TonePicksAPIView.as_view(), name='api-tone-picks'),
     path('looks/', CompleteLookAPIView.as_view(), name='api-looks'),
     path('looks/complete/', CompleteLookAPIView.as_view(), name='api-complete-look'),
     path('tone-rules/palette/', PaletteAPIView.as_view(), name='api-tone-palette'),
