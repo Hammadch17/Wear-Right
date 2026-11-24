@@ -7,6 +7,7 @@ from staff.services import ensure_member
 from django.conf import settings
 import os
 import shutil
+from pathlib import Path
 
 class Command(BaseCommand):
     help = 'Seeds initial products into the database for development and testing'
@@ -139,5 +140,42 @@ class Command(BaseCommand):
             )
         call_command("seed_taxonomy")
         call_command("seed_tone_rules")
+
+        # A stored name can carry Django's random suffix (photo_zvL7o8m.png) while only the original
+        # seed file exists (photo.png). Put the seed photo back under the stored name so the card shows it.
+        repaired_photos = 0
+        seed_products_dir = Path(settings.BASE_DIR) / "seed_media" / "products"
+        for product in Product.objects.exclude(image="").exclude(image__isnull=True).only("image"):
+            target = Path(settings.MEDIA_ROOT) / product.image.name
+            if target.exists():
+                continue
+            stem, extension = os.path.splitext(target.name)
+            base, separator, suffix = stem.rpartition("_")
+            candidates = [seed_products_dir / target.name]
+            if separator and len(suffix) == 7 and suffix.isalnum():
+                candidates.append(seed_products_dir / f"{base}{extension}")
+            source = next((candidate for candidate in candidates if candidate.exists()), None)
+            if source is None:
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+            repaired_photos += 1
+        if repaired_photos:
+            self.stdout.write(self.style.SUCCESS(
+                f"Restored {repaired_photos} product photo(s) from seed_media."
+            ))
+
+        # A configured MEDIA_ROOT can point at the wrong folder (a fresh worktree, a moved backup).
+        # Say so during seeding instead of leaving the shop with identical placeholders.
+        missing_photos = 0
+        for product in Product.objects.exclude(image="").exclude(image__isnull=True).only("image"):
+            if not (Path(settings.MEDIA_ROOT) / product.image.name).exists():
+                missing_photos += 1
+        if missing_photos:
+            self.stdout.write(self.style.WARNING(
+                f"{missing_photos} product photo(s) are missing under {settings.MEDIA_ROOT}. "
+                "Set MEDIA_ROOT in apps/server/.env to the shared media folder (or restore a media backup); "
+                "run `manage.py check_media` for the file list."
+            ))
 
         self.stdout.write(self.style.SUCCESS(f"Successfully seeded {count} products!"))

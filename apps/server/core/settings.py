@@ -150,7 +150,14 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'
 # Product photos live outside the code: point MEDIA_ROOT at any folder (see .env.example).
-MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', BASE_DIR / 'media'))
+# A shared `~/wear-right-data/media` folder (the team's documented location) is used when it exists,
+# so every worktree and every launch script sees the same photos without extra setup.
+def _default_media_root():
+    shared = Path.home() / 'wear-right-data' / 'media'
+    return shared if shared.is_dir() else BASE_DIR / 'media'
+
+
+MEDIA_ROOT = Path(os.path.expanduser(os.environ.get('MEDIA_ROOT') or str(_default_media_root())))
 # Local deployments serve /media/ from Django (core/urls.py) while DEBUG is on or off.
 # In production put a web server in front of Django, point it at MEDIA_ROOT and set
 # SERVE_MEDIA=False so Django stops serving files itself.
