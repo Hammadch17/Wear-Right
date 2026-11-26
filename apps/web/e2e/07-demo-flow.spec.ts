@@ -1,10 +1,9 @@
 import path from "node:path";
 import { ADMIN, adminLogin, alertBox, expect, login, logout, register, test } from "./fixtures";
 
-test("7a. scanner: choosing a gender unlocks upload and a bad photo gets a clear rescan", async ({ page, problems }) => {
+test("7a. scanner: auto or a chosen section unlocks upload and a bad photo gets a clear rescan", async ({ page, problems }) => {
   await page.goto("/scanner");
-  // The scanner only unlocks after the shopper chooses Men or Women.
-  await page.getByTestId("scan-gender-men").click();
+  // Auto is the default; choosing a section is optional. The upload is always available.
   await page.locator('input[type="file"]').setInputFiles(path.join(__dirname, "assets", "skin-patch.jpg"));
   await expect(page.getByTestId("scan-rescan-message")).toBeVisible({ timeout: 30_000 });
   await expect(page).toHaveURL(/\/scanner$/);

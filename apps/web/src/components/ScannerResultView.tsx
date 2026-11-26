@@ -13,6 +13,7 @@ import {
   normaliseDepth,
   toneKey,
   type ScanDepth,
+  type ScanGender,
 } from "@/features/scanner/gender";
 import { savedScanStore, type SavedScan } from "@/features/scanner/savedScan";
 import ResultHeader from "./scanner/ResultHeader";
@@ -98,6 +99,11 @@ export default function ScannerResultView() {
     }
   };
 
+  const changeGender = (gender: ScanGender) => {
+    if (!scan || gender === scan.gender) return;
+    savedScanStore.set({ ...scan, gender, genderDetection: null });
+  };
+
   const scanAgain = () => {
     savedScanStore.set(null);
     navigate("/scanner");
@@ -114,7 +120,13 @@ export default function ScannerResultView() {
 
   return (
     <main data-testid="scanner-result" className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:py-14">
-      <ResultHeader scan={scan} onChangeTone={changeTone} changing={changing} error={changeError} />
+      <ResultHeader
+        scan={scan}
+        onChangeTone={changeTone}
+        onChangeGender={changeGender}
+        changing={changing}
+        error={changeError}
+      />
 
       <section aria-labelledby="tone-picks-title" className="mt-10">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">

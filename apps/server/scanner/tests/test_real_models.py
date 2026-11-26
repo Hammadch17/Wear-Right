@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
+from scanner.engine.gender import GenderClassifier
 from scanner.engine.landmarks import FaceDetector
 from scanner.engine.pipeline import analyze_frame, consensus
 from scanner.engine.regions import EXCLUDED, region_mask
@@ -37,6 +38,14 @@ def portrait(models_dir):
     return cv2.imread(str(path))
 
 
+@pytest.fixture(scope="module")
+def gender_classifier(models_dir):
+    path = models_dir / "gender" / "gender_vit.onnx"
+    if not path.exists():
+        pytest.skip("gender model missing: run `make models`")
+    return GenderClassifier(path)
+
+
 def test_mediapipe_finds_478_landmarks_on_a_real_face(detector, portrait):
     landmarks = detector.detect(portrait)
     assert landmarks is not None and landmarks.shape == (478, 2)
@@ -63,6 +72,16 @@ def test_the_full_pipeline_gives_a_valid_reading_on_a_real_photo(detector, portr
     assert result["depth"] in {"Fair", "Medium", "Dark"} and 1 <= result["monk"] <= 10
     assert result["undertone"] in {"warm", "cool", "neutral"}
     assert 0 < result["confidence"] <= 100 and result["skin_pixels"] > 2500
+
+
+def test_the_real_gender_model_suggests_men_for_the_male_test_portrait(detector, portrait, gender_classifier):
+    landmarks = detector.detect(portrait)
+    reading = gender_classifier.predict(portrait, landmarks)
+    assert reading["suggested"] == "men"
+    assert reading["probabilities"]["men"] > reading["probabilities"]["women"] > 0
+    result = analyze_frame(portrait, detector, gender_classifier=gender_classifier)
+    assert result["gender"]["suggested"] == "men"
+    assert consensus([result, result])["gender"]["suggested"] == "men"
 
 
 def test_three_frames_of_the_same_photo_agree_completely(detector, portrait):

@@ -7,21 +7,25 @@ import {
   TONE_SWATCH,
   confidenceWord,
   type ScanDepth,
+  type ScanGender,
 } from "@/features/scanner/gender";
 import type { SavedScan } from "@/features/scanner/savedScan";
 
 type Props = {
   scan: SavedScan;
   onChangeTone: (tone: ScanDepth) => Promise<void> | void;
+  onChangeGender: (gender: ScanGender) => void;
   changing?: boolean;
   error?: string;
 };
 
 const DEPTHS: ScanDepth[] = ["Fair", "Medium", "Dark"];
+const GENDERS: ScanGender[] = ["men", "women"];
 
-/** The result headline, its swatch, and the in-place "choose mine" correction. */
-export default function ResultHeader({ scan, onChangeTone, changing = false, error }: Props) {
+/** The result headline, its swatch, the detected section and the in-place corrections. */
+export default function ResultHeader({ scan, onChangeTone, onChangeGender, changing = false, error }: Props) {
   const [open, setOpen] = useState(false);
+  const [openGender, setOpenGender] = useState(false);
 
   const choose = async (tone: ScanDepth) => {
     if (tone === scan.tone) {
@@ -55,6 +59,13 @@ export default function ResultHeader({ scan, onChangeTone, changing = false, err
             >
               {confidenceWord(scan.confidence)} confidence
             </span>
+            <span
+              data-testid="result-gender"
+              className="rounded-full border border-brand-gold/30 bg-amber-50 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-amber-800"
+            >
+              {scan.gender === "men" ? "Men's" : "Women's"} section
+              {scan.genderDetection ? ` · ${Math.round(scan.genderDetection.confidence)}% sure` : ""}
+            </span>
             {typeof scan.monk === "number" && scan.monk > 0 && (
               <span className="text-[11px] font-bold text-slate-500">Monk {scan.monk}</span>
             )}
@@ -67,6 +78,55 @@ export default function ResultHeader({ scan, onChangeTone, changing = false, err
             style={{ backgroundColor: TONE_SWATCH[scan.tone] }}
           />
         </div>
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50/50 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-amber-800">
+              {scan.genderDetection ? "Auto-detected section" : "Section you chose"}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-slate-600">
+              {scan.genderDetection
+                ? `Looks like ${scan.gender === "men" ? "Men" : "Women"} (${Math.round(scan.genderDetection.confidence)}% confidence, ${scan.genderDetection.confidence_label}).`
+                : `Picks are from the ${scan.gender === "men" ? "Men's" : "Women's"} section.`}
+            </p>
+            {scan.genderDetection?.reasons?.length ? (
+              <p className="mt-1 text-[11px] font-semibold text-amber-800">{scan.genderDetection.reasons.join(" · ")}</p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            data-testid="result-gender-change"
+            aria-expanded={openGender}
+            onClick={() => setOpenGender((current) => !current)}
+            className="rounded-full border border-amber-300 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-amber-900 hover:bg-amber-100"
+          >
+            Change section
+          </button>
+        </div>
+        {openGender && (
+          <div role="group" aria-label="Choose the shop section" className="mt-3 flex flex-wrap gap-2">
+            {GENDERS.map((gender) => (
+              <button
+                key={gender}
+                type="button"
+                data-testid={`result-gender-${gender}`}
+                onClick={() => {
+                  onChangeGender(gender);
+                  setOpenGender(false);
+                }}
+                className={`rounded-full border px-4 py-2 text-xs font-black uppercase tracking-wider ${
+                  gender === scan.gender
+                    ? "border-amber-600 bg-amber-600 text-white"
+                    : "border-amber-200 bg-white text-amber-900 hover:border-amber-400"
+                }`}
+              >
+                {gender === "men" ? "Men" : "Women"}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mt-6 border-t border-slate-100 pt-4">

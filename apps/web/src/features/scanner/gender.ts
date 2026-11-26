@@ -4,7 +4,7 @@ export type ScanGender = "men" | "women";
 export type ScanDepth = "Fair" | "Medium" | "Dark";
 export type ScanUndertone = "warm" | "cool" | "neutral";
 
-/** The profile stores male/female/unspecified; the scanner asks Men or Women and never infers it from a face. */
+/** The profile stores male/female/unspecified, used only as a hint on the result screen. */
 export function genderFromProfile(gender?: string | null): ScanGender | null {
   const value = (gender || "").toLowerCase();
   if (value === "male" || value === "men") return "men";

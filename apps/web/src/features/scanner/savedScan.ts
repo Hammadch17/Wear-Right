@@ -1,4 +1,5 @@
 import { createLocalStore } from "@/features/storage/localStore";
+import type { GenderDetection } from "./api";
 import type { ScanDepth, ScanGender, ScanUndertone } from "./gender";
 
 /** What the result page needs after the scanner navigates away. */
@@ -8,10 +9,9 @@ export type SavedScan = {
   confidence: number;
   monk: number | null;
   gender: ScanGender;
+  /** Why the scan suggested that section; absent for a manual tone or an older saved scan. */
+  genderDetection?: GenderDetection | null;
 };
 
 /** The latest scan, kept for reloads and for the result page. */
 export const savedScanStore = createLocalStore<SavedScan | null>("wr-scan-result", null);
-
-/** The Men/Women choice, kept separately so the scanner can prefill before a scan exists. */
-export const scanGenderStore = createLocalStore<ScanGender | null>("wr-scan-gender", null);
