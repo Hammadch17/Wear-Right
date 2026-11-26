@@ -16,6 +16,18 @@ export type ScanQuality = {
   failed: QualityCheck | null;
 };
 
+/** The optional appearance-based suggestion. The shopper can always override it. */
+export type GenderDetection = {
+  suggested: "men" | "women";
+  probabilities: { men: number; women: number };
+  confidence: number;
+  confidence_label: "high" | "medium" | "low";
+  agreement: number;
+  frames_used: number;
+  model: string;
+  reasons: string[];
+};
+
 export type ScanResponse = {
   status: "success" | "failed";
   detected_skin_tone?: string;
@@ -33,6 +45,8 @@ export type ScanResponse = {
   reason?: string;
   /** Photo quality checks of the photo the reading came from (or the one that failed). */
   quality?: ScanQuality | null;
+  /** Optional gender suggestion from the same frames. Null when the model is unavailable. */
+  gender_detection?: GenderDetection | null;
   /** Colour palette chosen for the detected tone. */
   palette?: {
     best: Array<string | { name: string; hex: string | null }>;

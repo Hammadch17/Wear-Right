@@ -2,12 +2,16 @@ from django.conf import settings
 
 from accounts.services import save_scan_result
 
+from .engine.gender import GenderClassifier, MODEL_NAME, reasons as gender_reasons
 from .engine.landmarks import FaceDetector
 from .engine.pipeline import consensus
 from .engine.skin_tone import analyze_upload, legacy_view
 from .models import FaceScanRecord
 
 _detector = None
+_gender_classifier = None
+_gender_checked = False
+GENDER_MODEL_FILE = "gender/gender_vit.onnx"
 
 
 class ScannerUnavailable(Exception):
@@ -25,6 +29,33 @@ def get_detector():
     return _detector
 
 
+def get_gender_classifier():
+    """The optional gender suggestion model. Missing weights disable the suggestion, not the scan."""
+    global _gender_classifier, _gender_checked
+    if _gender_checked:
+        return _gender_classifier
+    _gender_checked = True
+    model_path = settings.ML_MODELS_DIR / GENDER_MODEL_FILE
+    if not model_path.exists():
+        return None
+    try:
+        _gender_classifier = GenderClassifier(model_path)
+    except Exception:
+        _gender_classifier = None
+    return _gender_classifier
+
+
+def _gender_detection(final):
+    gender = (final or {}).get("gender")
+    if not gender:
+        return None
+    return {
+        **gender,
+        "model": MODEL_NAME,
+        "reasons": gender_reasons(gender, (final or {}).get("lighting", ""), (final or {}).get("quality")),
+    }
+
+
 def _record_scan(user, **fields):
     """Store a scan only for signed-in users; guests may scan but nothing is saved. The photo is never stored."""
     if user is None or not user.is_authenticated:
@@ -36,11 +67,16 @@ def _record_scan(user, **fields):
     )
 
 
-def analyze_face_images(uploaded_images, user=None, detector=None):
+def analyze_face_images(uploaded_images, user=None, detector=None, gender_classifier=None):
     detector = detector or get_detector()
+    if gender_classifier is None:
+        gender_classifier = get_gender_classifier()
     # Photo quality thresholds (scanner/engine/quality.py THRESHOLDS) can be overridden per deployment.
     thresholds = getattr(settings, "SKIN_SCAN_QUALITY", None)
-    frames = [analyze_upload(image, detector, quality_thresholds=thresholds) for image in uploaded_images]
+    frames = [
+        analyze_upload(image, detector, quality_thresholds=thresholds, gender_classifier=gender_classifier)
+        for image in uploaded_images
+    ]
     all_frame_results = [legacy_view(frame) for frame in frames]
     final = consensus(frames)
 
@@ -100,5 +136,6 @@ def analyze_face_images(uploaded_images, user=None, detector=None):
         },
         "total_frames_analyzed": len(frames),
         "quality": final.get("quality"),
+        "gender_detection": _gender_detection(final),
         "all_frame_results": all_frame_results,
     }

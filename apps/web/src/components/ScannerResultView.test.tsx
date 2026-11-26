@@ -15,6 +15,16 @@ const mocks = vi.hoisted(() => ({
     confidence: number;
     monk: number | null;
     gender: "men" | "women";
+    genderDetection?: null | {
+      suggested: "men" | "women";
+      probabilities: { men: number; women: number };
+      confidence: number;
+      confidence_label: "high" | "medium" | "low";
+      agreement: number;
+      frames_used: number;
+      model: string;
+      reasons: string[];
+    };
   },
   listeners: new Set<() => void>(),
 }));
@@ -200,6 +210,42 @@ describe("ScannerResultView", () => {
     await screen.findByTestId("tone-group-tops");
     expect(screen.getByTestId("tone-group-bottoms")).toBeInTheDocument();
     expect(screen.queryByTestId("tone-group-shirts")).not.toBeInTheDocument();
+  });
+
+  it("shows the auto-detected section with its confidence and changes it in place", async () => {
+    mocks.saved = {
+      tone: "Fair",
+      undertone: "warm",
+      confidence: 88,
+      monk: 4,
+      gender: "men",
+      genderDetection: {
+        suggested: "men",
+        probabilities: { men: 0.98, women: 0.02 },
+        confidence: 98,
+        confidence_label: "high",
+        agreement: 1,
+        frames_used: 2,
+        model: "test",
+        reasons: ["All 2 usable frames agree"],
+      },
+    };
+    mocks.tonePicks.mockImplementation(({ gender }: { gender: string }) => Promise.resolve(body("Fair", gender)));
+    const user = userEvent.setup();
+    render(<ScannerResultView />);
+
+    expect(await screen.findByTestId("result-gender")).toHaveTextContent("Men's section · 98% sure");
+    expect(screen.getByText(/All 2 usable frames agree/)).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("result-gender-change"));
+    await user.click(screen.getByTestId("result-gender-women"));
+
+    expect(mocks.saved?.gender).toBe("women");
+    expect(mocks.saved?.genderDetection).toBeNull();
+    expect(screen.getByText("Women's picks for Fair skin")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(mocks.tonePicks).toHaveBeenLastCalledWith({ tone: "fair", gender: "women", undertone: "warm" }),
+    );
   });
 
   it("forgets the scan when the shopper scans again", async () => {

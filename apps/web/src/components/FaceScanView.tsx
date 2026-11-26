@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@/lib/navigation";
 import { motion } from "motion/react";
 import {
@@ -11,14 +11,13 @@ import {
   Binary,
   Upload,
   HelpCircle,
-  Lock,
 } from "lucide-react";
 
 import AnalysingView from "@/components/scanner/AnalysingView";
-import GenderPicker from "@/components/scanner/GenderPicker";
+import GenderSuggestion from "@/components/scanner/GenderSuggestion";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { ApiError } from "@/lib/api";
-import { scannerApi, type QualityCheck } from "@/features/scanner/api";
+import { scannerApi, type GenderDetection, type QualityCheck } from "@/features/scanner/api";
 import {
   genderFromProfile,
   normaliseDepth,
@@ -27,10 +26,18 @@ import {
   type ScanGender,
   type ScanUndertone,
 } from "@/features/scanner/gender";
-import { savedScanStore, scanGenderStore, type SavedScan } from "@/features/scanner/savedScan";
+import { savedScanStore, type SavedScan } from "@/features/scanner/savedScan";
 import { waitForAnalysing } from "@/features/scanner/analysing";
 
-type ScanState = "idle" | "camera" | "scanning" | "retake" | "error";
+type ScanState = "idle" | "camera" | "scanning" | "retake" | "choose-gender" | "error";
+
+type PendingScan = {
+  tone: ScanDepth;
+  undertone: ScanUndertone | null;
+  confidence: number;
+  monk: number | null;
+  detection: GenderDetection | null;
+};
 
 const TELEMETRY_STEPS = [
   "INITIALIZING OPTICAL SENSORS...",
@@ -55,11 +62,6 @@ function scanErrorMessage(error: unknown): string {
 export default function FaceScanView() {
   const navigate = useNavigate();
   const { setSkinTone, profile, updateProfile } = useAuth();
-  const gender = useSyncExternalStore(
-    scanGenderStore.subscribe,
-    scanGenderStore.getSnapshot,
-    scanGenderStore.getServerSnapshot,
-  );
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -80,6 +82,8 @@ export default function FaceScanView() {
   const [manualDepth, setManualDepth] = useState<ScanDepth>("Medium");
   const [manualUndertone, setManualUndertone] = useState<ScanUndertone>("neutral");
   const [manualSubmitting, setManualSubmitting] = useState(false);
+  const [manualToneGender, setManualToneGender] = useState<ScanGender | null>(() => genderFromProfile(profile?.gender));
+  const [pendingScan, setPendingScan] = useState<PendingScan | null>(null);
 
   const clearAutoTimers = () => {
     if (autoCaptureTimerRef.current) {
@@ -116,20 +120,7 @@ export default function FaceScanView() {
     };
   }, []);
 
-  // Prefill the saved profile choice. A local choice already made on this device stays.
-  useEffect(() => {
-    if (gender) return;
-    const fromProfile = genderFromProfile(profile?.gender);
-    if (fromProfile) scanGenderStore.set(fromProfile);
-  }, [gender, profile]);
-
-  const chooseGender = (next: ScanGender) => {
-    scanGenderStore.set(next);
-    if (profile) void updateProfile({ gender: profileGender(next) }).catch(() => undefined);
-  };
-
   const startCamera = async () => {
-    if (!gender) return;
     try {
       clearAutoTimers();
       clearProgressTimer();
@@ -218,13 +209,23 @@ export default function FaceScanView() {
     navigate("/scanner/result");
   };
 
+  const savePending = (pending: PendingScan, gender: ScanGender) => {
+    saveAndOpenResult({
+      tone: pending.tone,
+      undertone: pending.undertone,
+      confidence: pending.confidence,
+      monk: pending.monk,
+      gender,
+      genderDetection: pending.detection,
+    });
+  };
+
   const sendImagesToBackend = async (blobs: Blob[]) => {
-    const chosen = gender;
-    if (!chosen) return;
     const startedAt = Date.now();
 
     try {
       clearProgressTimer();
+      setPendingScan(null);
       setScanState("scanning");
       setErrorMessage("");
       setBackendMessage("");
@@ -243,13 +244,23 @@ export default function FaceScanView() {
       const data = await scannerApi.analyze(formData);
       await waitForAnalysing(startedAt);
 
-      saveAndOpenResult({
+      const pending: PendingScan = {
         tone: normaliseDepth(data.detected_skin_tone || data.depth),
         undertone: data.undertone ?? null,
         confidence: Number(data.confidence_score ?? data.confidence ?? 0),
         monk: data.monk ?? null,
-        gender: chosen,
-      });
+        detection: data.gender_detection ?? null,
+      };
+
+      if (pending.detection && pending.detection.confidence >= 60) {
+        savePending(pending, pending.detection.suggested);
+        return;
+      }
+
+      setPendingScan(pending);
+      setProgress(100);
+      setActiveTelemetry("SCAN COMPLETE");
+      setScanState("choose-gender");
     } catch (error) {
       // A 422 is a normal "no usable face" answer: keep the retake guidance and manual fallback on this page.
       if (error instanceof ApiError && error.status === 422) {
@@ -272,7 +283,6 @@ export default function FaceScanView() {
   };
 
   const captureMultipleFrames = async () => {
-    if (!gender) return;
     clearAutoTimers();
     setCountdown(null);
     if (!videoRef.current || !canvasRef.current) {
@@ -312,7 +322,7 @@ export default function FaceScanView() {
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !gender) return;
+    if (!file) return;
     clearAutoTimers();
     setPreviewImage(URL.createObjectURL(file));
     stopCamera();
@@ -331,20 +341,26 @@ export default function FaceScanView() {
     setBackendMessage("");
     setQualityChecks([]);
     setCountdown(null);
+    setPendingScan(null);
   };
 
   const submitManualTone = async () => {
-    if (!gender) return;
+    if (!manualToneGender) {
+      setErrorMessage("Choose Men or Women below before entering a tone by hand.");
+      return;
+    }
     try {
       setManualSubmitting(true);
       setErrorMessage("");
       const response = await scannerApi.manual(manualDepth, manualUndertone);
+      if (profile) void updateProfile({ gender: profileGender(manualToneGender) }).catch(() => undefined);
       saveAndOpenResult({
         tone: normaliseDepth(response.detected_skin_tone || response.depth || manualDepth),
         undertone: response.undertone ?? manualUndertone,
         confidence: Number(response.confidence_score ?? response.confidence ?? 100),
         monk: response.monk ?? null,
-        gender,
+        gender: manualToneGender,
+        genderDetection: null,
       });
     } catch (error) {
       setErrorMessage(scanErrorMessage(error));
@@ -380,12 +396,6 @@ export default function FaceScanView() {
           </p>
         </header>
 
-        <GenderPicker
-          value={gender}
-          onChange={chooseGender}
-          disabled={scanState === "camera" || scanState === "scanning"}
-        />
-
         <div className="relative mt-8 aspect-[3/4] w-full max-w-[380px] select-none overflow-hidden rounded-[2rem] border-2 border-brand-gold/15 bg-white shadow-[0_20px_50px_-12px_rgba(35,33,29,0.18)] transition-all duration-500 group hover:border-brand-gold/30">
           {scanState === "camera" ? (
             <video ref={videoRef} autoPlay playsInline muted className="h-full w-full bg-slate-900 object-cover" />
@@ -399,25 +409,13 @@ export default function FaceScanView() {
               </div>
               <p className="mb-1 font-serif text-sm tracking-wide text-slate-200">No Face Frame Captured</p>
               <p className="max-w-[240px] text-xs leading-relaxed text-slate-400">
-                {gender
-                  ? "Start auto multi-frame scan or upload a face image to calibrate"
-                  : "Choose Men or Women above to unlock the camera and photo upload"}
+                Start an auto multi-frame scan or upload a face image; we read your tone and suggest a section.
               </p>
             </div>
           )}
 
           <canvas ref={canvasRef} className="hidden" />
           <div className="pointer-events-none absolute inset-0 bg-slate-950/10" />
-
-          {!gender && (
-            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-slate-950/55 px-8 text-center backdrop-blur-[1px]">
-              <Lock className="h-7 w-7 text-brand-gold" />
-              <p className="mt-3 text-xs font-black uppercase tracking-widest text-white">Choose Men or Women first</p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-200">
-                We ask so the picks match you. We never guess from your face.
-              </p>
-            </div>
-          )}
 
           <div className="pointer-events-none absolute left-6 top-6 z-20 h-8 w-8 rounded-tl-md border-l-2 border-t-2 border-brand-gold/70" />
           <div className="pointer-events-none absolute right-6 top-6 z-20 h-8 w-8 rounded-tr-md border-r-2 border-t-2 border-brand-gold/70" />
@@ -494,7 +492,15 @@ export default function FaceScanView() {
             </div>
           )}
 
-          {gender && scanState !== "scanning" && (
+          {scanState === "choose-gender" && pendingScan && (
+            <GenderSuggestion
+              detection={pendingScan.detection}
+              onChoose={(picked) => savePending(pendingScan, picked)}
+              onRetry={resetScan}
+            />
+          )}
+
+          {scanState !== "scanning" && scanState !== "choose-gender" && (
             <div className="mt-1 w-full max-w-sm">
               <button
                 type="button"
@@ -508,6 +514,26 @@ export default function FaceScanView() {
                   <p className="text-xs font-bold text-slate-600">
                     No face detected or camera unavailable? Choose the closest match.
                   </p>
+                  {!manualToneGender && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                      <p className="text-[11px] font-bold text-amber-800">
+                        No photo to detect a section. Which section should we style?
+                      </p>
+                      <div role="group" aria-label="Choose Men or Women for the tone" className="mt-2 flex gap-2">
+                        {(["men", "women"] as const).map((gender) => (
+                          <button
+                            key={gender}
+                            type="button"
+                            onClick={() => setManualToneGender(gender)}
+                            data-testid={`manual-tone-gender-${gender}`}
+                            className="rounded-full border border-amber-300 bg-white px-4 py-1.5 text-[11px] font-black uppercase tracking-wider text-amber-900 hover:bg-amber-100"
+                          >
+                            {gender === "men" ? "Men" : "Women"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">
                     Skin depth
                     <select
@@ -535,7 +561,7 @@ export default function FaceScanView() {
                   <button
                     type="button"
                     onClick={() => void submitManualTone()}
-                    disabled={manualSubmitting}
+                    disabled={manualSubmitting || !manualToneGender}
                     className="w-full rounded-xl bg-slate-900 py-3 text-xs font-black uppercase tracking-wider text-white disabled:opacity-60"
                   >
                     {manualSubmitting ? "Saving..." : "Use this tone"}
@@ -563,7 +589,6 @@ export default function FaceScanView() {
                 <button
                   type="button"
                   onClick={() => void startCamera()}
-                  disabled={!gender}
                   className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-blue-600 py-4 text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-blue-900/10 transition-all duration-300 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Camera className="h-4 w-4 text-white" />
@@ -572,7 +597,6 @@ export default function FaceScanView() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={!gender}
                   className="flex w-full items-center justify-center gap-2.5 rounded-xl border-2 border-blue-600/30 bg-transparent py-4 text-xs font-bold uppercase tracking-widest text-blue-800 transition-all duration-300 hover:border-blue-600/60 hover:bg-blue-50/50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Upload className="h-4 w-4" />

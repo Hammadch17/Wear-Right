@@ -60,6 +60,7 @@ class FaceScannerAPIView(APIView):
             "total_frames_analyzed": result["total_frames_analyzed"],
             "all_frame_results": result["all_frame_results"],
             "quality": result.get("quality"),
+            "gender_detection": result.get("gender_detection"),
             "palette": _palette(depth, undertone),
         }, status=status.HTTP_200_OK)
 

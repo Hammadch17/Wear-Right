@@ -14,18 +14,16 @@ The browser only talks to port 3000. `apps/web/next.config.ts` rewrites `/api/*`
 
 Docker (Docker Desktop on Windows/macOS), Python 3.12, Node 20.9+, and npm. The Node task runner means Windows does **not** need WSL or Make. Linux/macOS can use the Makefile shortcuts.
 
-## Setup (four commands)
+## Setup (two commands)
 
-The same commands work in PowerShell and in a Linux/macOS shell. On Windows use `.\` before the script; on Linux/macOS use `./`.
+The same commands work in PowerShell and in a Linux/macOS shell. No WSL, Make or `.sh` scripts are needed.
 
-```powershell
-node .\scripts\wearright.mjs install   # venv, .env with a random SECRET_KEY, pip + npm installs
-node .\scripts\wearright.mjs seed      # Postgres + migrations + products, admin, demo users, mannequin (if the kit is present)
-node .\scripts\wearright.mjs build     # production Next.js build
-node .\scripts\wearright.mjs demo      # start Docker, migrate/seed, build, run Django + next start
+```bash
+npm run setup      # venv, .env, packages, database, migrations, seed, AI models, mannequin, production build
+npm run run-prod   # start the production demo
 ```
 
-Linux/macOS equivalents: `node ./scripts/wearright.mjs ...`, or the older `make install`, `make demo-data`, `make build`, `make demo`. Windows details and every command explained: [`docs/WINDOWS.md`](docs/WINDOWS.md).
+Open http://localhost:3000. Beginners should read the step-by-step guide: [`GUIDE.md`](GUIDE.md). Windows troubleshooting: [`docs/WINDOWS.md`](docs/WINDOWS.md).
 
 Optional, real catalog: `make import-catalog SOURCE=/path/to/kaggle-folder` imports products from the Kaggle "Fashion Product Images" dataset as drafts (hidden from shoppers until priced). Details and open items are in `docs/STATUS.md`.
 
@@ -43,7 +41,7 @@ Open http://localhost:3000. Create an account at `/register`, or use the logins 
 
 The functional M1 journey is: Shop → product → cart → register/login (guest cart merges) → `/scan` or the manual tone picker → `/recommended` → complete the look → `/checkout` (COD or demo card) → `/my-orders` → `/orders/<id>`. Staff manage products and order status at `/admin`.
 
-For a presentation use `node scripts/wearright.mjs demo` for a production build, or `make demo-reset && make demo` for a clean database first. The walkthrough is in `docs/DEMO.md`.
+For a presentation use `npm run run-prod` for a production build, or `npm run db:reset && npm run setup` for a clean database first. The walkthrough is in `docs/DEMO.md`.
 
 The browser never talks to Django directly: sign-in is two httpOnly cookies set by `/api/auth/login/` through the Next.js rewrite.
 

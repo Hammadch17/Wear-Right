@@ -36,7 +36,7 @@ def test_a_guest_gets_a_full_reading_and_nothing_is_stored(api_client, fair_face
     assert body["detected_skin_tone"] == "Fair"
     assert body["monk"] == 5 and body["undertone"] == "warm"
     assert {"ita", "hue", "agreement", "confidence_score", "lighting_quality", "brightness", "message",
-            "total_frames_analyzed", "all_frame_results", "selected_frame_debug"} <= set(body)
+            "total_frames_analyzed", "all_frame_results", "selected_frame_debug", "gender_detection"} <= set(body)
     assert body["total_frames_analyzed"] == 3 and body["agreement"] == 1.0
     assert "Monk 5" in body["message"]
     assert FaceScanRecord.objects.count() == 0

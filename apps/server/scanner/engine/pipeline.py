@@ -14,6 +14,7 @@ What changed from v1 (bugs fixed on purpose):
 import cv2
 import numpy as np
 
+from .gender import aggregate_gender
 from .quality import check_quality
 from .regions import region_mask
 from .skin import (
@@ -67,7 +68,8 @@ def _fail(reason, message, lighting="Unknown", brightness=0.0):
     return {"ok": False, "reason": reason, "message": message, "lighting": lighting, "brightness": round(brightness, 2)}
 
 
-def analyze_frame(bgr, detector, *, white_balance=WHITE_BALANCE_DEFAULT, quality_thresholds=None, check_photo=True):
+def analyze_frame(bgr, detector, *, white_balance=WHITE_BALANCE_DEFAULT, quality_thresholds=None, check_photo=True,
+                  gender_classifier=None):
     """Analyse one BGR frame. Returns {"ok": True, ...measurements} or {"ok": False, "reason", "message", ...}."""
     if bgr is None:
         return _fail("unreadable", "Image could not be processed.")
@@ -116,6 +118,12 @@ def analyze_frame(bgr, detector, *, white_balance=WHITE_BALANCE_DEFAULT, quality
     confidence = 100.0 * min(1.0, len(region) / FULL_CONFIDENCE_PIXELS) * LIGHTING_FACTOR[lighting]
     if quality is not None:
         confidence *= quality["confidence_factor"]
+    gender = None
+    if gender_classifier is not None:
+        try:
+            gender = gender_classifier.predict(bgr, landmarks)
+        except Exception:
+            gender = None  # a missing or unreadable gender model never blocks the skin-tone result
     return {
         "ok": True,
         "depth": depth_from_ita(ita),
@@ -131,6 +139,7 @@ def analyze_frame(bgr, detector, *, white_balance=WHITE_BALANCE_DEFAULT, quality
         "confidence": round(confidence, 1),
         "white_balance": bool(white_balance),
         "quality": quality,
+        "gender": gender,
     }
 
 
@@ -157,6 +166,7 @@ def consensus(results):
     monk, monk_distance = nearest_monk(lab)
     best = max(agreeing, key=lambda r: r["confidence"])
     confidence = float(np.mean([r["confidence"] for r in agreeing])) * agreement
+    gender = aggregate_gender(usable)
     return {
         "depth": depth,
         "undertone": undertone_from_hue(hue),
@@ -172,4 +182,5 @@ def consensus(results):
         "frames_agreeing": len(agreeing),
         "agreement": round(agreement, 2),
         "quality": best.get("quality"),
+        "gender": gender,
     }

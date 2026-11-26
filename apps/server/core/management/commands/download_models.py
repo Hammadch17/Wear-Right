@@ -10,6 +10,8 @@ from catalog.engine.cutout import CLOTH_MODEL, DEFAULT_MODEL, rembg_remover
 FILES = {
     "face_landmarker.task": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
     "test_assets/portrait.jpg": "https://storage.googleapis.com/mediapipe-assets/portrait.jpg",
+    # Optional gender suggestion: rizvandwiki/gender-classification, converted to ONNX.
+    "gender/gender_vit.onnx": "https://huggingface.co/onnx-community/gender-classification-ONNX/resolve/main/onnx/model_quantized.onnx",
 }
 
 
