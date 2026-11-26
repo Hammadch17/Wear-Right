@@ -48,10 +48,8 @@ Install Git, Python 3.12 from python.org (tick **Add python.exe to PATH**), Node
 ```powershell
 git clone <repository-url> Wear-Right
 cd Wear-Right
-node .\scripts\wearright.mjs install
-node .\scripts\wearright.mjs seed
-node .\scripts\wearright.mjs build
-node .\scripts\wearright.mjs demo
+npm run setup
+npm run run-prod
 ```
 
 Keep the project in a short path such as `C:\dev\Wear-Right`, not in OneDrive. Docker Desktop uses WSL2 internally, but the project commands run in normal PowerShell.
@@ -74,13 +72,13 @@ make install
 
 If step 2 says the file already exists, it leaves it alone. That is safe.
 
-If `make` is unavailable (for example on native Windows), use the cross-platform runner instead of the manual commands:
+If `make` is unavailable (for example on native Windows), use the cross-platform npm command instead of the manual commands:
 
 ```powershell
-node .\scripts\wearright.mjs install
+npm run setup
 ```
 
-It creates the venv with the correct Windows (`venv\Scripts`) or Linux (`venv/bin`) layout, writes `.env` with a random `SECRET_KEY`, and installs both package sets. On Linux/macOS the same command is `node ./scripts/wearright.mjs install`.
+It creates the venv with the correct Windows (`venv\Scripts`) or Linux (`venv/bin`) layout, writes `.env` with a random `SECRET_KEY`, installs both package sets, prepares the database and builds the website. `npm run setup:models` only downloads missing AI models.
 
 Do not commit `.env`, `media/`, `ml_models/`, or `venv/`; they are gitignored.
 
@@ -327,8 +325,8 @@ make demo          # next build, then next start + Django
 On Windows (PowerShell):
 
 ```powershell
-node .\scripts\wearright.mjs seed
-node .\scripts\wearright.mjs demo
+npm run setup
+npm run run-prod
 ```
 
 `make demo` runs `npm run build`, starts `next start` on 3000 and Django with `--noreload`. It is faster than dev mode and has no Next development badge. Open <http://localhost:3000>.

@@ -2,13 +2,23 @@
   "name": "wear-right",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n web,api -c cyan,yellow \"npm:dev:web\" \"npm:dev:api\"",
+    "dev": "node scripts/wearright.mjs dev",
     "dev:web": "npm --prefix apps/web run dev",
     "dev:api": "node scripts/run-python.mjs apps/server/manage.py runserver 8000",
-    "demo": "concurrently -n web,api -c cyan,yellow \"npm --prefix apps/web run start\" \"node scripts/run-python.mjs apps/server/manage.py runserver 8000 --noreload\"",
-    "setup": "node scripts/wearright.mjs install",
+    "setup": "node scripts/wearright.mjs setup",
+    "setup:models": "node scripts/wearright.mjs models",
+    "seed": "node scripts/wearright.mjs seed",
     "seed:all": "node scripts/wearright.mjs seed",
-    "demo:all": "node scripts/wearright.mjs demo"
+    "build": "node scripts/wearright.mjs build",
+    "run-prod": "node scripts/wearright.mjs run-prod",
+    "demo": "node scripts/wearright.mjs demo",
+    "demo:all": "node scripts/wearright.mjs demo",
+    "db:up": "node scripts/wearright.mjs db-up",
+    "db:down": "node scripts/wearright.mjs db-down",
+    "db:reset": "node scripts/wearright.mjs db-reset",
+    "models": "node scripts/wearright.mjs models",
+    "test": "node scripts/wearright.mjs test",
+    "doctor": "node scripts/wearright.mjs doctor"
   },
   "devDependencies": {
     "concurrently": "^10.0.7"

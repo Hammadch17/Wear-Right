@@ -11,16 +11,18 @@ Run every command in the project folder, for example `C:\dev\Wear-Right`.
 
 | What you want | Windows command |
 | --- | --- |
-| Install once | `node .\scripts\wearright.mjs install` |
-| Start the database | `node .\scripts\wearright.mjs db-up` |
-| Create/repair demo data | `node .\scripts\wearright.mjs seed` |
-| Make the production website | `node .\scripts\wearright.mjs build` |
-| **Start the demo** | `node .\scripts\wearright.mjs demo` |
-| Start faster after building | `node .\scripts\wearright.mjs demo --skip-build` |
-| Start without reseeding | `node .\scripts\wearright.mjs demo --skip-build --no-seed` |
-| Stop the database | `node .\scripts\wearright.mjs db-down` |
+| **First-time setup** | `npm run setup` |
+| **Start the demo** | `npm run run-prod` |
+| Rebuild the website | `npm run build` |
+| Re-seed demo data | `npm run seed` |
+| Download missing AI models | `npm run models` |
+| Start the database | `npm run db:up` |
+| Stop the database | `npm run db:down` |
+| Erase the database | `npm run db:reset` |
+| Full demo (seed + build + run) | `npm run demo` |
+| Development mode | `npm run dev` |
 
-`demo` now stops old project servers still holding ports 3000 or 8000, starts Docker, migrates, and starts both the website and backend. Press **Ctrl + C** to stop the website and backend.
+`npm run setup` installs everything and prepares the database. `npm run run-prod` starts the built demo and stops old project servers on ports 3000 and 8000. Press **Ctrl + C** to stop the website and backend; Docker keeps running.
 
 ## 1. Install these once
 
@@ -46,60 +48,54 @@ git clone <repository-url> Wear-Right
 cd Wear-Right
 ```
 
-## 3. The four commands
+## 3. The two commands
 
-Run these from the project folder, in this order.
+Run these from the project folder.
 
-### Install
-
-```powershell
-node .\scripts\wearright.mjs install
-```
-
-This creates the Python environment, creates `apps\server\.env` with a random secret key, and installs the Python and Node packages. You only need it once, or again after pulling new dependencies.
-
-### Seed all demo data
+### First-time setup
 
 ```powershell
-node .\scripts\wearright.mjs seed
+npm run setup
 ```
 
-This starts Postgres and Mailpit in Docker, applies the database migrations, and creates:
+This one command:
 
-- the demo products, photos, prices and stock;
-- categories, styles, colours and recommender tone rules;
-- the demo customer and both admin logins.
+- creates the Python environment and `apps\server\.env` with a random secret key;
+- installs the Python and Node packages;
+- starts Postgres and Mailpit in Docker;
+- applies the database migrations;
+- creates the demo products, photos, prices, stock, categories, tone rules and logins;
+- downloads any missing AI models (the first run is large);
+- imports and publishes the mannequin kit when it is present;
+- creates the fast production website build.
 
-If the mannequin kit is present, it imports the mannequin bases, layers and looks as well.
+You only need it once, or again after pulling new code/dependencies.
 
-### Create the production build
+### Start the demo
 
 ```powershell
-node .\scripts\wearright.mjs build
+npm run run-prod
 ```
 
-This makes the fast production version of the website in `apps\web\.next`. It does not start anything.
-
-### Run the production demo
-
-```powershell
-node .\scripts\wearright.mjs demo
-```
-
-This starts Docker, applies migrations, seeds the base data, builds the website, and starts the production website and backend. Open:
+This starts Docker if needed, applies migrations, and starts the production website and backend. Open:
 
 **<http://localhost:3000>**
 
 Press **Ctrl + C** in that window to stop the website and backend. To stop the database containers:
 
 ```powershell
-node .\scripts\wearright.mjs db-down
+npm run db:down
 ```
 
-If you already built the website and want to skip the slow build step:
+`npm run run-prod` uses the existing build, so it is fast. Run `npm run build` after changing frontend code, or `npm run setup` again if anything is unclear.
+
+### If you want every step separately
 
 ```powershell
-node .\scripts\wearright.mjs demo --skip-build
+npm run build       # production website build
+npm run seed        # database, demo data and mannequin
+npm run models      # download missing AI models
+npm run db:up       # start only Postgres and Mailpit
 ```
 
 ## Demo logins
@@ -128,7 +124,7 @@ Wear-Right\
 `seed` finds that folder automatically. If the kit is somewhere else:
 
 ```powershell
-node .\scripts\wearright.mjs seed --mannequin-kit "D:\assets\mannequin-alpha-kit"
+npm run seed -- --mannequin-kit "D:\assets\mannequin-alpha-kit"
 ```
 
 Only rows marked `done` in `manifest.csv` are imported. The kit references products that must already exist in the database. On this demo machine they do. On a completely empty database, import the product catalogue first or restore a database backup; otherwise the mannequin rows are skipped with a message.
@@ -136,13 +132,13 @@ Only rows marked `done` in `manifest.csv` are imported. The kit references produ
 To skip the mannequin even when the kit exists:
 
 ```powershell
-node .\scripts\wearright.mjs seed --skip-mannequin
+npm run seed -- --skip-mannequin
 ```
 
 ## Every day
 
 ```powershell
-node .\scripts\wearright.mjs dev
+npm run dev
 ```
 
 This starts Docker and runs the development website and backend with live reload. Open <http://localhost:3000>.
@@ -151,14 +147,19 @@ This starts Docker and runs the development website and backend with live reload
 
 | Command | What it does |
 | --- | --- |
-| `node .\scripts\wearright.mjs db-up` | Start Postgres and Mailpit |
-| `node .\scripts\wearright.mjs db-down` | Stop the containers, keep the data |
-| `node .\scripts\wearright.mjs db-reset` | Delete the database volume and start empty |
-| `node .\scripts\wearright.mjs test` | Run the backend and website tests |
-| `node .\scripts\wearright.mjs doctor` | Show what is installed and what is missing |
-| `node .\scripts\wearright.mjs --help` | Show every command |
+| `npm run setup` | Complete first-time setup |
+| `npm run run-prod` | Start the production demo |
+| `npm run build` | Rebuild the production website |
+| `npm run seed` | Re-seed database and mannequin data |
+| `npm run models` | Download missing AI models |
+| `npm run db:up` | Start Postgres and Mailpit |
+| `npm run db:down` | Stop the containers, keep the data |
+| `npm run db:reset` | Delete the database volume and start empty |
+| `npm run test` | Run the backend and website tests |
+| `npm run doctor` | Show what is installed and what is missing |
+| `npm run demo` | Full seed + build + run path |
 
-After `db-reset`, run `seed` again.
+After `db:reset`, run `npm run setup` again.
 
 ## If something goes wrong
 
@@ -188,21 +189,21 @@ The last number is the PID. Stop it (replace `1234`):
 taskkill /PID 1234 /T /F
 ```
 
-Then run `node .\scripts\wearright.mjs demo --skip-build` again.
+Then run `npm run run-prod` again.
 
 **"connection to server at localhost port 5433 failed" or the website shows database errors.**
 Docker was stopped. Start it and wait until Docker Desktop says **Running**, then:
 
 ```powershell
-node .\scripts\wearright.mjs db-up
-node .\scripts\wearright.mjs demo --skip-build --no-seed
+npm run db:up
+npm run run-prod
 ```
 
 **I closed the window and now the site is broken.**
-Just run `node .\scripts\wearright.mjs demo --skip-build --no-seed` again. It starts Docker first, so the database comes back with the website.
+Just run `npm run run-prod` again. It starts Docker first, so the database comes back with the website.
 
 **The website is empty.**
-Run `node .\scripts\wearright.mjs seed`, then reload the page.
+Run `npm run seed`, then reload the page.
 
 **Product photos are missing.**
 Check `MEDIA_ROOT` in `apps\server\.env`, then run `seed` again or restore the media backup.
@@ -211,7 +212,7 @@ Check `MEDIA_ROOT` in `apps\server\.env`, then run `seed` again or restore the m
 Use `http://localhost:3000`, not a network address. Allow camera access in Windows and in the browser. You can always upload a photo or pick the skin tone manually.
 
 **The build stops with a security warning.**
-Use Node.js LTS and run `node .\scripts\wearright.mjs install` again. The package lock installs the tested Next.js version.
+Use Node.js LTS and run `npm run setup` again. The package lock installs the tested Next.js version.
 
 ## What "production demo" means
 
