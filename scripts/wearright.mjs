@@ -12,7 +12,7 @@
  * It deliberately uses Node (already required by the web app) so Windows users
  * do not need Make, WSL, bash, sed or tar.
  */
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -68,6 +68,91 @@ function runNpm(args, options = {}) {
   if (!IS_WIN) return run("npm", args, options);
   const line = ["npm", ...args].map(quoteWin).join(" ");
   return run(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", line], options);
+}
+
+/** Start npm without waiting for it to exit (used by demo and dev). */
+function spawnNpm(args, options = {}) {
+  if (!IS_WIN) return spawn("npm", args, { stdio: "inherit", ...options });
+  const line = ["npm", ...args].map(quoteWin).join(" ");
+  return spawn(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", line], {
+    stdio: "inherit",
+    windowsHide: true,
+    ...options,
+  });
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** The process ids listening on a TCP port, using only tools that ship with Windows or Linux. */
+function pidsOnPort(port) {
+  if (IS_WIN) {
+    const result = spawnSync("netstat", ["-ano", "-p", "tcp"], { encoding: "utf8" });
+    if (result.status !== 0) return [];
+    const pids = new Set();
+    for (const line of String(result.stdout || "").split(/\r?\n/)) {
+      // TCP    0.0.0.0:3000    0.0.0.0:0    LISTENING    1234
+      const match = line.trim().match(/^TCP\s+\S+:(\d+)\s+\S+\s+LISTENING\s+(\d+)$/i);
+      if (match && Number(match[1]) === port) pids.add(Number(match[2]));
+    }
+    return [...pids];
+  }
+
+  const lsof = spawnSync("lsof", ["-ti", `tcp:${port}`, "-sTCP:LISTEN"], { encoding: "utf8" });
+  if (lsof.status === 0) {
+    return String(lsof.stdout || "")
+      .split(/\s+/)
+      .map(Number)
+      .filter((pid) => Number.isInteger(pid) && pid > 0);
+  }
+
+  const fuser = spawnSync("fuser", [`${port}/tcp`], { encoding: "utf8" });
+  return String(`${fuser.stdout || ""} ${fuser.stderr || ""}`)
+    .split(/\s+/)
+    .map(Number)
+    .filter((pid) => Number.isInteger(pid) && pid > 0);
+}
+
+function killProcessTree(pid) {
+  if (IS_WIN) {
+    spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" });
+    return;
+  }
+  try {
+    process.kill(pid, "SIGTERM");
+  } catch {
+    // already gone
+  }
+}
+
+/**
+ * Stop anything still listening on a port. This is what stops the "port already
+ * in use" error when an older demo window was closed without stopping its servers.
+ */
+async function freePort(port) {
+  const pids = pidsOnPort(port);
+  if (pids.length === 0) return;
+  warn(`Port ${port} is already in use by PID ${pids.join(", ")}. Stopping the old server...`);
+  for (const pid of pids) killProcessTree(pid);
+  await sleep(700);
+  if (!IS_WIN) {
+    for (const pid of pidsOnPort(port)) {
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch {
+        // already gone
+      }
+    }
+    await sleep(300);
+  }
+  if (pidsOnPort(port).length > 0) {
+    die(
+      `Port ${port} is still in use. Close the other program (or restart Windows) and try again. ` +
+        `On Windows, "netstat -ano | findstr :${port}" shows the PID.`,
+    );
+  }
+  info(`Port ${port} is free.`);
 }
 
 function runPython(args, options = {}) {
@@ -296,8 +381,57 @@ function commandBuild() {
   info("Production build finished: apps/web/.next");
 }
 
-function commandDemo(options) {
+let liveServers = [];
+let shuttingDown = false;
+
+function shutdownServers(code = 0) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  info("Stopping the website and backend...");
+  for (const { child } of liveServers) {
+    if (child.pid) killProcessTree(child.pid);
+  }
+  setTimeout(() => process.exit(code), 700);
+}
+
+function startServers({ dev }) {
+  const children = [];
+  const apiEnv = { ...process.env, PYTHONUNBUFFERED: "1" };
+  if (!dev) {
+    // The production demo should behave like production even if .env still says DEBUG=True.
+    apiEnv.DEBUG = "False";
+    apiEnv.SERVE_MEDIA = "True";
+  }
+
+  const web = spawnNpm(["--prefix", WEB, "run", dev ? "dev" : "start"], { cwd: ROOT });
+  const api = spawn(
+    VENV_PY,
+    ["manage.py", "runserver", "8000", ...(dev ? [] : ["--noreload", "--insecure"])],
+    { cwd: SERVER, env: apiEnv, stdio: "inherit" },
+  );
+  children.push({ name: "website", child: web }, { name: "backend", child: api });
+  liveServers = children;
+
+  process.once("SIGINT", () => shutdownServers(0));
+  process.once("SIGTERM", () => shutdownServers(0));
+
+  for (const { name, child } of children) {
+    child.on("error", (error) => {
+      warn(`The ${name} could not start: ${error.message}`);
+      shutdownServers(1);
+    });
+    child.on("exit", (code, signal) => {
+      if (shuttingDown) return;
+      warn(`The ${name} stopped unexpectedly (${signal || `exit ${code}`}).`);
+      shutdownServers(code ?? 1);
+    });
+  }
+}
+
+async function commandDemo(options) {
   checkNode();
+  await freePort(3000);
+  await freePort(8000);
   dbUp();
   migrate();
   if (!options.noSeed) seedProducts();
@@ -308,15 +442,17 @@ function commandDemo(options) {
   info("  API       http://127.0.0.1:8000 (reached through the web proxy)");
   info("  Mailpit   http://localhost:8025");
   info("Press Ctrl+C to stop.");
-  runNpm(["run", "demo"]);
+  startServers({ dev: false });
 }
 
-function commandDev() {
+async function commandDev() {
   checkNode();
+  await freePort(3000);
+  await freePort(8000);
   dbUp();
   migrate();
   info("Starting development servers on http://localhost:3000 ...");
-  runNpm(["run", "dev"]);
+  startServers({ dev: true });
 }
 
 function commandTest() {

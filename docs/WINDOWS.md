@@ -1,6 +1,26 @@
-# Wear Right - Windows setup guide
+# Wear Right - Windows setup guide (beginner friendly)
 
-This guide is for a Windows 10 or Windows 11 computer. It uses normal PowerShell, not WSL. The same steps work on a laptop brought to the demo.
+This guide is for a Windows 10 or Windows 11 computer. It uses normal PowerShell, not WSL. The same steps work on the laptop brought to the demo.
+
+> **Use the Node commands in this guide.**
+> `run-prod.sh`, `run-build.sh`, `make` and other shell scripts are for Linux/macOS. They do **not** work in normal Windows PowerShell. The Node task runner does the same jobs on Windows.
+
+## The only commands you normally need
+
+Run every command in the project folder, for example `C:\dev\Wear-Right`.
+
+| What you want | Windows command |
+| --- | --- |
+| Install once | `node .\scripts\wearright.mjs install` |
+| Start the database | `node .\scripts\wearright.mjs db-up` |
+| Create/repair demo data | `node .\scripts\wearright.mjs seed` |
+| Make the production website | `node .\scripts\wearright.mjs build` |
+| **Start the demo** | `node .\scripts\wearright.mjs demo` |
+| Start faster after building | `node .\scripts\wearright.mjs demo --skip-build` |
+| Start without reseeding | `node .\scripts\wearright.mjs demo --skip-build --no-seed` |
+| Stop the database | `node .\scripts\wearright.mjs db-down` |
+
+`demo` now stops old project servers still holding ports 3000 or 8000, starts Docker, migrates, and starts both the website and backend. Press **Ctrl + C** to stop the website and backend.
 
 ## 1. Install these once
 
@@ -153,6 +173,33 @@ Start Docker Desktop and wait until it says **Running**. Check `docker --version
 
 **Port 5433 is already in use.**
 Another database is using it. Stop the other program, or change the port in `docker-compose.yml` and `apps\server\.env` together.
+
+**"That port is already in use" or "Django failed to start".**
+An older demo window left a server running. The Node `demo` command now stops old servers on ports 3000 and 8000 automatically. If it still happens, open PowerShell as Administrator and check which program owns the port:
+
+```powershell
+netstat -ano | findstr :3000
+netstat -ano | findstr :8000
+```
+
+The last number is the PID. Stop it (replace `1234`):
+
+```powershell
+taskkill /PID 1234 /T /F
+```
+
+Then run `node .\scripts\wearright.mjs demo --skip-build` again.
+
+**"connection to server at localhost port 5433 failed" or the website shows database errors.**
+Docker was stopped. Start it and wait until Docker Desktop says **Running**, then:
+
+```powershell
+node .\scripts\wearright.mjs db-up
+node .\scripts\wearright.mjs demo --skip-build --no-seed
+```
+
+**I closed the window and now the site is broken.**
+Just run `node .\scripts\wearright.mjs demo --skip-build --no-seed` again. It starts Docker first, so the database comes back with the website.
 
 **The website is empty.**
 Run `node .\scripts\wearright.mjs seed`, then reload the page.
