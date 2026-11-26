@@ -70,8 +70,8 @@ The photo is still never stored.
 
 ### Outputs
 
-- Markdown chapters in `docs/guide/`, each with Mermaid diagrams and screenshots.
-- `docs/guide/diagrams/` for Mermaid sources, `docs/guide/assets/screenshots/` for captured pages.
+- Markdown chapters in `extras/documentation/`, each with Mermaid diagrams and screenshots.
+- A README index plus Mermaid sources embedded in each chapter; screenshots later under `extras/documentation/assets/screenshots/`.
 - Rendered DOCX and PDF for submission (Pandoc + Mermaid CLI; add a `make guide` target later).
 
 ### Chapters
